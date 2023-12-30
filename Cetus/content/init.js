@@ -561,6 +561,7 @@ const instrumentBinary = function(bufferSource) {
                 type: funcTypeReadWatchpoint,
             });
 
+            // const funcTypeReadWatchpoint = wail.addTypeEntry({
             const importReadWatchFunc = wail.addImportEntry({
                 moduleStr: "env",
                 fieldStr: "readWatchCallback",
@@ -574,17 +575,17 @@ const instrumentBinary = function(bufferSource) {
                 const thisConfig = wpConfigs[i];
 
                 const thisRoute = [
-                    OP_GET_GLOBAL, globalWatchFlags.varUint32(),
-                    OP_I32_CONST, VarUint32(ENABLE_WP_READ << (3 * i)),
-                    OP_I32_AND,
-                    OP_IF, 0x40,
+                    // OP_GET_GLOBAL, globalWatchFlags.varUint32(),
+                    // OP_I32_CONST, VarUint32(ENABLE_WP_READ << (3 * i)),
+                    // OP_I32_AND,
+                    // OP_IF, 0x40,
                         OP_GET_LOCAL, VarUint32(0x00),
                         OP_GET_LOCAL, VarUint32(0x01),
                         OP_GET_LOCAL, VarUint32(0x02),
                         OP_GET_GLOBAL, thisConfig.globalAddr.varUint32(),
                         OP_GET_GLOBAL, thisConfig.globalSize.varUint32(),
                         OP_CALL, funcEntryReadWatchpoint.varUint32(),
-                    OP_END,
+                    // OP_END,
                 ];
 
                 codeRoutes.push(thisRoute);
@@ -592,10 +593,10 @@ const instrumentBinary = function(bufferSource) {
 
             const routerCode = [];
 
-            routerCode.push(OP_GET_GLOBAL);
-            routerCode.push(globalAreReadWatchpointsEnabled.varUint32());
-            routerCode.push(OP_IF);
-            routerCode.push(0x40);
+            // routerCode.push(OP_GET_GLOBAL);
+            // routerCode.push(globalAreReadWatchpointsEnabled.varUint32());
+            // routerCode.push(OP_IF);
+            // routerCode.push(0x40);
 
             for (let i = 0; i < wpCount; i++) {
                 const thisRoute = codeRoutes[i];
@@ -604,7 +605,7 @@ const instrumentBinary = function(bufferSource) {
                 }
             }
 
-            routerCode.push(OP_END);
+            // routerCode.push(OP_END);
             routerCode.push(OP_GET_LOCAL);
             routerCode.push(VarUint32(0x00));
             routerCode.push(OP_RETURN);
@@ -640,22 +641,22 @@ const instrumentBinary = function(bufferSource) {
                 locals: [],
                 code: [
                     OP_BLOCK, 0x40,
-                        OP_GET_LOCAL, VarUint32(0x03),
-                        OP_GET_LOCAL, VarUint32(0x04),
-                        OP_I32_ADD,
-                        OP_GET_LOCAL, VarUint32(0x00),
-                        OP_GET_LOCAL, VarUint32(0x01),
-                        OP_I32_ADD,
-                        OP_I32_LT_U,
-                        OP_BR_IF, VarUint32(0x00),
-                        OP_GET_LOCAL, VarUint32(0x03),
-                        OP_GET_LOCAL, VarUint32(0x00),
-                        OP_GET_LOCAL, VarUint32(0x01),
-                        OP_I32_ADD,
-                        OP_GET_LOCAL, VarUint32(0x02),
-                        OP_I32_ADD,
-                        OP_I32_GT_U,
-                        OP_BR_IF, VarUint32(0x00),
+                        // OP_GET_LOCAL, VarUint32(0x03),
+                        // OP_GET_LOCAL, VarUint32(0x04),
+                        // OP_I32_ADD,
+                        // OP_GET_LOCAL, VarUint32(0x00),
+                        // OP_GET_LOCAL, VarUint32(0x01),
+                        // OP_I32_ADD,
+                        // OP_I32_LT_U,
+                        // OP_BR_IF, VarUint32(0x00),
+                        // OP_GET_LOCAL, VarUint32(0x03),
+                        // OP_GET_LOCAL, VarUint32(0x00),
+                        // OP_GET_LOCAL, VarUint32(0x01),
+                        // OP_I32_ADD,
+                        // OP_GET_LOCAL, VarUint32(0x02),
+                        // OP_I32_ADD,
+                        // OP_I32_GT_U,
+                        // OP_BR_IF, VarUint32(0x00),
                         OP_CALL, importReadWatchFunc.varUint32(),
                     OP_END,
                     OP_RETURN,
@@ -1026,13 +1027,13 @@ const getMemoryFromObject = function(inObject, memoryDescriptor) {
 };
 
 // Callback that is executed when a read watchpoint is hit
-const readWatchCallback = function(cetusIdentifier) {
-    const stackTrace = StackTrace.get().then(function(stackTrace) { stacktraceCallback(cetusIdentifier, stackTrace) });
+const readWatchCallback = function() {
+    // window.debug(new Error().stack);
 };
 
 // Callback that is executed when a write watchpoint is hit
-const writeWatchCallback = function(cetusIdentifier) {
-    const stackTrace = StackTrace.get().then(function(stackTrace) { stacktraceCallback(cetusIdentifier, stackTrace) });
+const writeWatchCallback = function() {
+    // window.debug(new Error().stack);
 };
 
 const stacktraceCallback = function(cetusIdentifier, stackFrames) {
@@ -1083,6 +1084,7 @@ const stacktraceCallback = function(cetusIdentifier, stackFrames) {
     const msgBody = {
         stackTrace: trimmedStackFrame
     };
+    console.debug(msgBody);
 
     cetusInstances.get(cetusIdentifier).sendExtensionMessage("watchPointHit", msgBody);
 };
@@ -1291,8 +1293,8 @@ const webAssemblyInstantiateStreamingHook = function(sourceObj, importObject = {
 
     const cetusIdentifier = cetusInstances.reserveIdentifier();
 
-    importObject.env.readWatchCallback = function() { readWatchCallback(cetusIdentifier) };
-    importObject.env.writeWatchCallback = function() { writeWatchCallback(cetusIdentifier) };
+    importObject.env.readWatchCallback = function() { readWatchCallback.call(null, arguments); };
+    importObject.env.writeWatchCallback = function() { writeWatchCallback.call(null, arguments); };
 
     const wail = new WailParser();
 

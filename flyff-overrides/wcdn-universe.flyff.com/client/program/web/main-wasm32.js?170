@@ -1,9 +1,35 @@
-const customWasmMemory = new WebAssembly.Memory({
-    initial: 4096,
-    maximum: 4096,
-});
+const div = document.createElement("div");
+div.setAttribute('id', 'console');
+div.style.background = "rgba(47, 47, 47, 0.6)";
+div.style.position = "absolute";
+div.style.top = "0";
+div.style.left = "0";
+div.style.width = "100%";
+div.style.height = "150px";
+div.style.fontSize = "13px";
+div.style.fontFamily = "Consolas, Courier New, monospace, serif";
+div.style.color = "white";
+div.style.overflowY = "scroll";
+div.style.zIndex = "999";
+div.style.padding = "4px";
+document.body.appendChild(div);
 
-debugger;
+function addToLog(msg) {
+    const fakeError = new Error();
+
+    const newLine = document.createElement("div");
+    newLine.innerText = msg;
+
+    const stack = document.createElement("div");
+    stack.innerText = fakeError.stack.split("\n").slice(2).join("\n");
+
+    newLine.appendChild(stack);
+
+    div.appendChild(newLine);
+    div.scrollTop = div.scrollHeight;
+}
+
+////////////////
 
 var Module = typeof Module != "undefined" ? Module : {};
 var moduleOverrides = Object.assign({}, Module);
@@ -256,8 +282,6 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
 // let proxyBuffer = new Proxy(largeArrayBuffer, proxyHandler);
 
 function instantiateAsync(binary, binaryFile, imports, callback) {
-    imports.env = imports.env || {};
-    imports.env.mem = customWasmMemory;
     if (!binary && typeof WebAssembly.instantiateStreaming == "function" && !isDataURI(binaryFile) && typeof fetch == "function") {
         return fetch(binaryFile, {
             credentials: "same-origin"
@@ -1389,7 +1413,25 @@ function craftEmvalAllocator(argCount) {
     for (var i = 0; i < argCount; ++i) {
         functionBody += "var argType" + i + " = requireRegisteredType(HEAPU32[((argTypes)>>2)], 'parameter " + i + "');\n" + "var arg" + i + " = argType" + i + ".readValueFromPointer(args);\n" + "args += argType" + i + "['argPackAdvance'];\n" + "argTypes += 4;\n"
     }
-    functionBody += "var obj = new constructor(" + argsList + ");\n" + "return valueToHandle(obj);\n" + "}\n";
+    functionBody += "var obj = new constructor(" + argsList + ");\n";
+
+    functionBody += `
+    if (obj.constructor.name === "WebSocket") {
+        const origSend = obj.send;
+        obj.send = function(data) {
+            addToLog('Sending: ' + JSON.stringify(Array.from(new Uint8Array(data))));
+            origSend.call(obj, data);
+        }
+
+        obj.addEventListener('message', function(e) {
+            addToLog('Received: ' + JSON.stringify(Array.from(new Uint8Array(e.data))));
+        });
+
+    }
+    
+    `;
+
+    functionBody += "return valueToHandle(obj);\n" + "}\n";
     return new Function("requireRegisteredType","Module","valueToHandle","getMemory",functionBody)(requireRegisteredType, Module, Emval.toHandle, getMemory)
 }
 var emval_newers = {};
