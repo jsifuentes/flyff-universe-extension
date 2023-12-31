@@ -1,32 +1,21 @@
-const div = document.createElement("div");
-div.setAttribute('id', 'console');
-div.style.background = "rgba(47, 47, 47, 0.6)";
-div.style.position = "absolute";
-div.style.top = "0";
-div.style.left = "0";
-div.style.width = "100%";
-div.style.height = "150px";
-div.style.fontSize = "13px";
-div.style.fontFamily = "Consolas, Courier New, monospace, serif";
-div.style.color = "white";
-div.style.overflowY = "scroll";
-div.style.zIndex = "999";
-div.style.padding = "4px";
-document.body.appendChild(div);
+// const div = document.createElement("div");
+// div.setAttribute('id', 'console');
+// div.style.background = "rgba(47, 47, 47, 0.6)";
+// div.style.position = "absolute";
+// div.style.top = "0";
+// div.style.left = "0";
+// div.style.width = "100%";
+// div.style.height = "250px";
+// div.style.fontSize = "13px";
+// div.style.fontFamily = "Consolas, Courier New, monospace, serif";
+// div.style.color = "white";
+// div.style.overflowY = "scroll";
+// div.style.zIndex = "999";
+// div.style.padding = "4px";
+// document.body.appendChild(div);
 
-function addToLog(msg) {
-    const fakeError = new Error();
-
-    const newLine = document.createElement("div");
-    newLine.innerText = msg;
-
-    const stack = document.createElement("div");
-    stack.innerText = fakeError.stack.split("\n").slice(2).join("\n");
-
-    newLine.appendChild(stack);
-
-    div.appendChild(newLine);
-    div.scrollTop = div.scrollHeight;
+function addToLog(msg, style) {
+    window.debug('%c ' + msg + "%c\n" + new Error().stack, style + "; color: white;", "color: black; background: white;");
 }
 
 ////////////////
@@ -1419,12 +1408,12 @@ function craftEmvalAllocator(argCount) {
     if (obj.constructor.name === "WebSocket") {
         const origSend = obj.send;
         obj.send = function(data) {
-            addToLog('Sending: ' + JSON.stringify(Array.from(new Uint8Array(data))));
+            addToLog('Sending: ' + Array.from(new Uint8Array(data)).join(','), 'background: green');
             origSend.call(obj, data);
         }
 
         obj.addEventListener('message', function(e) {
-            addToLog('Received: ' + JSON.stringify(Array.from(new Uint8Array(e.data))));
+            addToLog('Received: ' + Array.from(new Uint8Array(e.data)).join(','), 'background: purple');
         });
 
     }
