@@ -1408,12 +1408,12 @@ function craftEmvalAllocator(argCount) {
     if (obj.constructor.name === "WebSocket") {
         const origSend = obj.send;
         obj.send = function(data) {
-            addToLog('Sending: ' + Array.from(new Uint8Array(data)).join(','), 'background: green');
+            addToLog('Sending: ' + Array.from(new Uint8Array(data)).join("\t"), 'background: green');
             origSend.call(obj, data);
         }
 
         obj.addEventListener('message', function(e) {
-            addToLog('Received: ' + Array.from(new Uint8Array(e.data)).join(','), 'background: purple');
+            addToLog('Received: ' + Array.from(new Uint8Array(e.data)).join("\t"), 'background: purple');
         });
 
     }
