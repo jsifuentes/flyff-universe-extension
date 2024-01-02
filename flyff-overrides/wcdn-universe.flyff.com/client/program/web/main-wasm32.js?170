@@ -15,7 +15,39 @@
 // document.body.appendChild(div);
 
 function addToLog(msg, style) {
+    Error.stackTraceLimit = Infinity;
     window.debug('%c ' + msg + "%c\n" + new Error().stack, style + "; color: white;", "color: black; background: white;");
+}
+
+function patternSearch(type, pattern) {
+    const results = cetusInstances._instances[0].patternSearch(type, pattern, cetusInstances._instances[0].getMemorySize());
+    for (const id in results.results) {
+        const address = toHex(id);
+        window.info(`${address}: ${results.results[id]}`);
+    }
+    return results;
+}
+
+function stringSearch (str) {
+    return this.patternSearch('ascii', str);
+}
+
+function searchBytes(bytes) {
+    return this.patternSearch('bytes', str);
+}
+
+function readBytes(address, size = 16, asAscii = false) {
+    const bytes = [];
+    const buffer = new Int8Array(wasmMemory.buffer);
+    for (let i = 0; i < size; i++) {
+        bytes.push(buffer[address + i]);
+    }
+
+    if (asAscii) {
+        return bytes.map(byte => String.fromCharCode(byte)).join('');
+    }
+
+    return bytes;
 }
 
 ////////////////

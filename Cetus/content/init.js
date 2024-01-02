@@ -252,7 +252,7 @@ const instrumentBinary = function(bufferSource) {
         if (instrumentLevel & ENABLE_WP_WRITE) {
             const funcTypeWriteWatchpointRouter = wail.addTypeEntry({
                 form: "func",
-                params: [],
+                params: ["i32", "i32"],
             });
 
             const funcTypeWriteWatchpoint = wail.addTypeEntry({
@@ -566,7 +566,10 @@ const instrumentBinary = function(bufferSource) {
                 moduleStr: "env",
                 fieldStr: "readWatchCallback",
                 kind: "func",
-                type: funcTypeWatchCallback
+                type: wail.addTypeEntry({
+                    form: "func",
+                    params: ["i32", "i32", "i32", "i32", "i32"],
+                })
             });
 
             const codeRoutes = [];
@@ -657,6 +660,12 @@ const instrumentBinary = function(bufferSource) {
                         // OP_I32_ADD,
                         // OP_I32_GT_U,
                         // OP_BR_IF, VarUint32(0x00),
+                        
+                        OP_GET_LOCAL, VarUint32(0x00),
+                        OP_GET_LOCAL, VarUint32(0x01),
+                        OP_GET_LOCAL, VarUint32(0x02),
+                        OP_GET_LOCAL, VarUint32(0x03),
+                        OP_GET_LOCAL, VarUint32(0x04),
                         OP_CALL, importReadWatchFunc.varUint32(),
                     OP_END,
                     OP_RETURN,
@@ -806,11 +815,11 @@ const instrumentBinary = function(bufferSource) {
             const endOpcode = [ OP_END ];
 
             reader.copyBuffer(instrBytes);
+            reader.copyBuffer(callOpcode);
+            reader.copyBuffer(callDest);
             // reader.copyBuffer(getGlobalOpcode);
             // reader.copyBuffer(getGlobalImmediate);
             // reader.copyBuffer(ifOpcode);
-            reader.copyBuffer(callOpcode);
-            reader.copyBuffer(callDest);
             // reader.copyBuffer(endOpcode);
 
             return reader.write();
@@ -1026,14 +1035,48 @@ const getMemoryFromObject = function(inObject, memoryDescriptor) {
         }
 };
 
+let watchAddressRange = null;
+const recordIfHit = function(startAddr, length, forMs = 0) {
+    watchAddressRange = [
+        parseInt(startAddr),
+        parseInt(startAddr) + length, 
+    ];
+    if (forMs > 0) {
+        setTimeout(function () {
+            watchAddressRange = null;
+        }, forMs)
+    }
+}
+
 // Callback that is executed when a read watchpoint is hit
-const readWatchCallback = function() {
-    // window.debug(new Error().stack);
+/*
+local_0 = base pointer
+local_1 = load offset
+local_2 = load size
+local_3 = wp addr
+local_4 = wp size
+*/
+var readWatchCallback = function(basePtr, offset, size) {
+    if (watchAddressRange) {
+        /**
+         * The variable `watchAdressRange` is an array of two elements: the starting memory index and the ending memory index.
+         * This code checks if basePtr + offset and basePtr + offset + size is in the range of watchAddressRange.
+         */
+        const startAddr = watchAddressRange[0];
+        const endAddr = watchAddressRange[1];
+        const addr = parseInt(basePtr) + parseInt(offset);
+        if (addr >= startAddr && addr + size <= endAddr) {
+            window.info(`Accessed: ${toHex(addr)}\n` + new Error().stack);
+        }
+    }
 };
 
 // Callback that is executed when a write watchpoint is hit
-const writeWatchCallback = function() {
-    // window.debug(new Error().stack);
+var writeWatchCallback = function(basePtr, offset, size) {
+    if (watchAllWrites) {
+        const addr = parseInt(basePtr) + parseInt(offset);
+        window.info(`Wrote: ${toHex(addr)} (${size} bytes)\n` + new Error().stack);
+    }
 };
 
 const stacktraceCallback = function(cetusIdentifier, stackFrames) {

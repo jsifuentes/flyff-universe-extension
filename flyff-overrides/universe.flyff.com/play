@@ -112,6 +112,7 @@ src="https://www.facebook.com/tr?id=733881727616194&ev=PageView&noscript=1"
 	
 	<script type="text/javascript">
 		window.debug = console.debug;
+		window.info = console.info;
                         var AuthToken = '144BM1qtNpwVm4UMKWcL7oDJRdxLoRTZTUmhwdAmfNYF2s3d84ZiXUkO95E2IwDg';
                 
 		var FilemapVersion = '170';

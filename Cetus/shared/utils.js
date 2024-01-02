@@ -18,6 +18,10 @@ const toHex = function(i) {
 	return '0x' + parseInt(i).toString(16).padStart(8, '0');
 };
 
+const fromHex = function(hex) {
+    return parseInt(hex, 16);
+};
+
 const toHexByte = function(i) {
 	return parseInt(i).toString(16).padStart(2, '0');
 };
