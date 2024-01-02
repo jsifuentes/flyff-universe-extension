@@ -13,9 +13,8 @@
 // div.style.zIndex = "999";
 // div.style.padding = "4px";
 // document.body.appendChild(div);
-
+Error.stackTraceLimit = Infinity;
 function addToLog(msg, style) {
-    Error.stackTraceLimit = Infinity;
     window.debug('%c ' + msg + "%c\n" + new Error().stack, style + "; color: white;", "color: black; background: white;");
 }
 
@@ -28,7 +27,7 @@ function patternSearch(type, pattern) {
     return results;
 }
 
-function stringSearch (str) {
+function stringSearch(str) {
     return this.patternSearch('ascii', str);
 }
 
@@ -1440,6 +1439,7 @@ function craftEmvalAllocator(argCount) {
     if (obj.constructor.name === "WebSocket") {
         const origSend = obj.send;
         obj.send = function(data) {
+            // stop listening for hits to that memory address here.
             addToLog('Sending: ' + Array.from(new Uint8Array(data)).join("\t"), 'background: green');
             origSend.call(obj, data);
         }
@@ -1448,6 +1448,16 @@ function craftEmvalAllocator(argCount) {
             addToLog('Received: ' + Array.from(new Uint8Array(e.data)).join("\t"), 'background: purple');
         });
 
+        obj.addEventListener('open', function (e) {
+            const memoryIdxs = stringSearch(AuthToken);
+            if (memoryIdxs.results.length === 0) {
+                throw new Error('Could not find auth token in memory!');
+            }
+
+            recordIfHit(Object.keys(memoryIdxs.results)[0], 0, 0, function(basePtr, offset, size) {
+                window.info('Accessed the auth token at ' + toHex(basePtr + offset));
+            });
+        });
     }
     
     `;

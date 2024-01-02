@@ -104,6 +104,30 @@ const instrumentBinary = function(bufferSource) {
             initExpr: [ OP_I32_CONST, VarUint32(0x00), OP_END ]
         });
 
+        const globalStoreAddress = wail.addGlobalEntry({
+            globalType: {
+                contentType: "i64",
+                mutability: true,
+            },
+            initExpr: [ OP_I64_CONST, VarUint32(0x00), OP_END ]
+        });
+
+        const globalStoreValue32 = wail.addGlobalEntry({
+            globalType: {
+                contentType: "i32",
+                mutability: true,
+            },
+            initExpr: [ OP_I32_CONST, VarUint32(0x00), OP_END ]
+        });
+
+        const globalStoreValue64 = wail.addGlobalEntry({
+            globalType: {
+                contentType: "i64",
+                mutability: true,
+            },
+            initExpr: [ OP_I64_CONST, VarUint32(0x00), OP_END ]
+        });
+
         // See the actual code entry for this function for a full explanation of why
         // we need to split value into upper and lower halves
         const funcTypeConfigWatchpoint = wail.addTypeEntry({
@@ -252,7 +276,7 @@ const instrumentBinary = function(bufferSource) {
         if (instrumentLevel & ENABLE_WP_WRITE) {
             const funcTypeWriteWatchpointRouter = wail.addTypeEntry({
                 form: "func",
-                params: ["i32", "i32"],
+                params: [],
             });
 
             const funcTypeWriteWatchpoint = wail.addTypeEntry({
@@ -799,7 +823,7 @@ const instrumentBinary = function(bufferSource) {
         //     call <funcEntryWriteWatchpointRouter>
         // // end 
         //
-        const writeWatchpointInstrCallback = function(instrBytes) {
+        const writeWatchpointInstrCallback = function(instrBytes, bitSize) {
             const reader = new BufferReader();
 
             // As mentioned above, we avoid using the spread operator here solely
@@ -808,15 +832,21 @@ const instrumentBinary = function(bufferSource) {
             const getGlobalImmediate = globalAreWriteWatchpointsEnabled.varUint32();
 
             const ifOpcode = [ OP_IF, 0x40 ];
-
-            const callOpcode = [ OP_CALL ];
-            const callDest = funcEntryWriteWatchpointRouter.varUint32();
-
             const endOpcode = [ OP_END ];
 
+
+            const correctGlobalStoreValue = (!bitSize || bitSize === 32) ? globalStoreValue32 : globalStoreValue64;
+            // reader.copyBuffer([ OP_SET_GLOBAL ]);
+            // reader.copyBuffer([ globalStoreAddress.varUint32() ])
+            // reader.copyBuffer([ OP_SET_GLOBAL ])
+            // reader.copyBuffer([ correctGlobalStoreValue.varUint32() ]);
+            // reader.copyBuffer([ OP_CALL ])
+            // reader.copyBuffer([ funcEntryWriteWatchpointRouter.varUint32() ]);
+            // reader.copyBuffer([ OP_GET_GLOBAL ])
+            // reader.copyBuffer([ globalStoreAddress.varUint32() ]);
+            // reader.copyBuffer([ OP_GET_GLOBAL ])
+            // reader.copyBuffer([ correctGlobalStoreValue.varUint32() ]);
             reader.copyBuffer(instrBytes);
-            reader.copyBuffer(callOpcode);
-            reader.copyBuffer(callDest);
             // reader.copyBuffer(getGlobalOpcode);
             // reader.copyBuffer(getGlobalImmediate);
             // reader.copyBuffer(ifOpcode);
@@ -903,15 +933,15 @@ const instrumentBinary = function(bufferSource) {
         }
 
         if (instrumentLevel & ENABLE_WP_WRITE) {
-            wail.addInstructionParser(OP_I32_STORE,   writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_I64_STORE,   writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_F32_STORE,   writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_F64_STORE,   writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_I32_STORE8,  writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_I32_STORE16, writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_I64_STORE8,  writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_I64_STORE16, writeWatchpointInstrCallback);
-            wail.addInstructionParser(OP_I64_STORE32, writeWatchpointInstrCallback);
+            wail.addInstructionParser(OP_I32_STORE,   (instrBytes) => writeWatchpointInstrCallback(instrBytes, 32));
+            wail.addInstructionParser(OP_I64_STORE,   (instrBytes) => writeWatchpointInstrCallback(instrBytes, 64));
+            wail.addInstructionParser(OP_F32_STORE,   (instrBytes) => writeWatchpointInstrCallback(instrBytes, 32));
+            wail.addInstructionParser(OP_F64_STORE,   (instrBytes) => writeWatchpointInstrCallback(instrBytes, 64));
+            wail.addInstructionParser(OP_I32_STORE8,  (instrBytes) => writeWatchpointInstrCallback(instrBytes, 32));
+            wail.addInstructionParser(OP_I32_STORE16, (instrBytes) => writeWatchpointInstrCallback(instrBytes, 32));
+            wail.addInstructionParser(OP_I64_STORE8,  (instrBytes) => writeWatchpointInstrCallback(instrBytes, 64));
+            wail.addInstructionParser(OP_I64_STORE16, (instrBytes) => writeWatchpointInstrCallback(instrBytes, 64));
+            wail.addInstructionParser(OP_I64_STORE32, (instrBytes) => writeWatchpointInstrCallback(instrBytes, 64));
         }
 
         wail.addInstructionParser(OP_SIMD, simdInstrCallback);
@@ -1035,17 +1065,23 @@ const getMemoryFromObject = function(inObject, memoryDescriptor) {
         }
 };
 
-let watchAddressRange = null;
-const recordIfHit = function(startAddr, length, forMs = 0) {
-    watchAddressRange = [
-        parseInt(startAddr),
-        parseInt(startAddr) + length, 
-    ];
+let watchAddresses = [];
+const recordIfHit = function(startAddr, length, forMs = 0, accessCallback = null) {
+    const newidx = watchAddresses.push([parseInt(startAddr), parseInt(startAddr) + length]) - 1;
+
     if (forMs > 0) {
         setTimeout(function () {
             watchAddressRange = null;
         }, forMs)
     }
+
+    if (accessCallback) {
+        waitUntilNextMemoryAccess = accessCallback;
+    }
+}
+
+const stopRecordingHits = function () {
+    watchAddressRange = null;
 }
 
 // Callback that is executed when a read watchpoint is hit
@@ -1056,6 +1092,8 @@ local_2 = load size
 local_3 = wp addr
 local_4 = wp size
 */
+
+var waitUntilNextMemoryAccess = null;
 var readWatchCallback = function(basePtr, offset, size) {
     if (watchAddressRange) {
         /**
@@ -1067,6 +1105,11 @@ var readWatchCallback = function(basePtr, offset, size) {
         const addr = parseInt(basePtr) + parseInt(offset);
         if (addr >= startAddr && addr + size <= endAddr) {
             window.info(`Accessed: ${toHex(addr)}\n` + new Error().stack);
+            if (waitUntilNextMemoryAccess) {
+                waitUntilNextMemoryAccess(basePtr, offset, size);
+                watchAddressRange = null;
+                waitUntilNextMemoryAccess = null;
+            }
         }
     }
 };
