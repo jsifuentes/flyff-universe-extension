@@ -96,8 +96,8 @@ function createHookFunction(original) {
     };
 }
 
-export default function hookInstantiate() {
-    const oldFunction = WebAssembly.instantiate;
+export default function hookInstantiateStreaming() {
+    const oldFunction = WebAssembly.instantiateStreaming;
     const hook = createHookFunction(oldFunction);
-    window.WebAssembly.instantiate = hook;
+    window.WebAssembly.instantiateStreaming = hook;
 }

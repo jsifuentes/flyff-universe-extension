@@ -915,6 +915,31 @@ const instrumentBinary = function(bufferSource) {
             return instrBytes;
         };
 
+        const hookFunction = wail.addImportEntry({
+            moduleStr: "env",
+            fieldStr: "hookEncryptionFunction",
+            kind: "func",
+            type: wail.addTypeEntry({
+                form: "func",
+                params: ["i32"],
+                // returnType: "i32",
+            })
+        });
+
+        window.info(hookFunction);
+
+        wail.addCodeElementParser(2657, function(instrBytes) {
+            window.info(instrBytes.index);
+            window.info(hookFunction.varUint32());
+            const reader = new BufferReader(instrBytes.bytes);
+            reader.copyBuffer([OP_GET_LOCAL])
+            reader.copyBuffer(VarUint32(0x00));
+            reader.copyBuffer([OP_CALL])
+            reader.copyBuffer(hookFunction.varUint32());
+            reader.copyBuffer(instrBytes.bytes);
+            return reader.write();
+        });
+
         if (instrumentLevel & ENABLE_WP_READ) {
             wail.addInstructionParser(OP_I32_LOAD,     readWatchpointInstrCallback);
             wail.addInstructionParser(OP_I64_LOAD,     readWatchpointInstrCallback);
@@ -1065,9 +1090,12 @@ const getMemoryFromObject = function(inObject, memoryDescriptor) {
         }
 };
 
-let watchAddresses = [];
-const recordIfHit = function(startAddr, length, forMs = 0, accessCallback = null) {
-    const newidx = watchAddresses.push([parseInt(startAddr), parseInt(startAddr) + length]) - 1;
+let watchAddressRange = null;
+let memoryAddressReadCallback = null;
+const waitForMemoryAddressRead = function(startAddr, length, forMs = 0, accessCallback = null) {
+    watchAddressRange = [ parseInt(startAddr), parseInt(startAddr) + length ];
+
+    window.info(`starting to watch address range: ${JSON.stringify(watchAddressRange)}`);
 
     if (forMs > 0) {
         setTimeout(function () {
@@ -1076,7 +1104,7 @@ const recordIfHit = function(startAddr, length, forMs = 0, accessCallback = null
     }
 
     if (accessCallback) {
-        waitUntilNextMemoryAccess = accessCallback;
+        memoryAddressReadCallback = accessCallback;
     }
 }
 
@@ -1093,7 +1121,6 @@ local_3 = wp addr
 local_4 = wp size
 */
 
-var waitUntilNextMemoryAccess = null;
 var readWatchCallback = function(basePtr, offset, size) {
     if (watchAddressRange) {
         /**
@@ -1105,10 +1132,10 @@ var readWatchCallback = function(basePtr, offset, size) {
         const addr = parseInt(basePtr) + parseInt(offset);
         if (addr >= startAddr && addr + size <= endAddr) {
             window.info(`Accessed: ${toHex(addr)}\n` + new Error().stack);
-            if (waitUntilNextMemoryAccess) {
-                waitUntilNextMemoryAccess(basePtr, offset, size);
+            debugger;
+            if (memoryAddressReadCallback) {
+                memoryAddressReadCallback(basePtr, offset, size, new Error().stack);
                 watchAddressRange = null;
-                waitUntilNextMemoryAccess = null;
             }
         }
     }
@@ -1175,6 +1202,62 @@ const stacktraceCallback = function(cetusIdentifier, stackFrames) {
     cetusInstances.get(cetusIdentifier).sendExtensionMessage("watchPointHit", msgBody);
 };
 
+function patternSearch(type, pattern) {
+    const results = cetusInstances._instances[0].patternSearch(type, pattern, cetusInstances._instances[0].getMemorySize());
+    for (const id in results.results) {
+        const address = toHex(id);
+        window.info(`${address}: ${results.results[id]}`);
+    }
+    return results;
+}
+
+function stringSearch(str) {
+    return patternSearch('ascii', str);
+}
+
+function searchBytes(bytes) {
+    return patternSearch('bytes', str);
+}
+
+function readBytes(address, size = 16, intSize = 8, asAscii = false) {
+    const bytes = [];
+    let buffer;
+    if (intSize === 8) {
+        buffer = new Int8Array(wasmMemory.buffer);
+    } else if (intSize === 32) {
+        buffer = new Int32Array(wasmMemory.buffer);
+    }
+    for (let i = 0; i < size; i++) {
+        bytes.push(buffer[address + i]);
+    }
+
+    if (asAscii) {
+        return bytes.map(byte => String.fromCharCode(byte)).join('');
+    }
+
+    return bytes;
+}
+
+const hookEncryptionFunction = function(ptr) {
+    const view = new DataView(wasmMemory.buffer);
+
+    const beginningOfMsgPtr = ptr;
+    const endOfMsgPtr = ptr+4;
+
+    const msgAddresses = [
+        view.getUint32(beginningOfMsgPtr, true),
+        view.getUint32(endOfMsgPtr, true),
+    ];
+
+    const length = msgAddresses[1] - msgAddresses[0];
+    const bytes = readBytes(msgAddresses[0], length, 8, false);
+
+    const style = `background: rgba(${bytes[0]}, ${bytes[0]}, ${bytes[0]}, .2);`;
+
+    window.info("%c" + bytes, style);
+    window.info("%c" + bytes.map((v) => String.fromCharCode(v)).join(""), style);
+}
+
 const oldWebAssemblyInstantiate = WebAssembly.instantiate;
 
 const webAssemblyInstantiateHook = function(inObject, importObject = {}) {
@@ -1230,6 +1313,7 @@ const webAssemblyInstantiateHook = function(inObject, importObject = {}) {
 
     importObject.env.readWatchCallback = readWatchCallback;
     importObject.env.writeWatchCallback = writeWatchCallback;
+    importObject.env.hookEncryptionFunction = function() { hookEncryptionFunction.apply(null, arguments); };
 
     return new Promise(function(resolve, reject) {
         oldWebAssemblyInstantiate(instrumentedObject, importObject).then(function(instanceObject) {
@@ -1331,6 +1415,7 @@ const webAssemblyInstanceProxy = new Proxy(WebAssembly.Instance, {
 
         importObject.env.readWatchCallback = readWatchCallback;
         importObject.env.writeWatchCallback = writeWatchCallback;
+        importObject.env.hookEncryptionFunction = function() { hookEncryptionFunction.call(null, arguments); };
 
         const result = new target(module, importObject);
 
@@ -1381,6 +1466,7 @@ const webAssemblyInstantiateStreamingHook = function(sourceObj, importObject = {
 
     importObject.env.readWatchCallback = function() { readWatchCallback.call(null, arguments); };
     importObject.env.writeWatchCallback = function() { writeWatchCallback.call(null, arguments); };
+    importObject.env.hookEncryptionFunction = function() { hookEncryptionFunction.call(null, arguments); };
 
     const wail = new WailParser();
 

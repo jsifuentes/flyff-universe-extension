@@ -11,5 +11,9 @@
             "run_at": "document_start"
         }
     ],
+    "web_accessible_resources": [{
+        "matches": ["https://universe.flyff.com/*"],
+        "resources": ["src/*"]
+    }],
     "permissions": ["activeTab", "storage"]
 }
