@@ -6,11 +6,11 @@ export function encryptionFunctionHook(ptr) {
     const message = new Uint8Array(wasmMemory.buffer, beginningOfMsgPtr, messageLength);
 
     const messageAscii = new TextDecoder("ascii").decode(message);
-    wyff.logger.info(`Sending message to server: ${messageAscii} [${message.join("\t")}]`);
+    wyff.logger.info(`SENDING\t\t${message.join("\t")}\n${messageAscii}`);
 }
 
 export function hookEncryptionFunction(parser, hookRef) {
-    parser.addCodeElementParser(2656, function ({ bytes }) {
+    parser.addCodeElementParser(2657, function ({ bytes }) {
         const reader = new BufferReader(bytes);
 
         // push the first arg of the function onto the stack

@@ -1,3 +1,4 @@
+import { decryptionFunctionHook, hookDecryptionFunction } from "./decryption.js";
 import { encryptionFunctionHook, hookEncryptionFunction } from "./encryption";
 
 function instrumentResults(imports, binary) {
@@ -24,6 +25,10 @@ export default function instrumentBinary(binary) {
     imports.env.encryptionHook = encryptionFunctionHook;
     const encryptionHookRef = importFunction(parser, "encryptionHook", ["i32"]);
     hookEncryptionFunction(parser, encryptionHookRef);
+
+    imports.env.decryptionHook = decryptionFunctionHook;
+    const decryptionHookRef = importFunction(parser, "decryptionHook", ["i32", "i32"]);
+    hookDecryptionFunction(parser, decryptionHookRef);
 
     parser.parse();
     return instrumentResults(imports, parser.write());
