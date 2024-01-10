@@ -5,15 +5,27 @@
     "manifest_version": 3,
     "content_scripts": [
         {
-            "js": ["init.js"],
+            "js": ["thirdparty/wail.js", "dist/content-script.js"],
             "matches": ["https://universe.flyff.com/*"],
-            "all_frames": true,
-            "run_at": "document_start"
+            "all_frames": false,
+            "run_at": "document_start",
+            "world": "MAIN"
         }
     ],
     "web_accessible_resources": [{
         "matches": ["https://universe.flyff.com/*"],
-        "resources": ["src/*"]
+        "resources": [
+            "dist/*",
+            "thirdparty/*"
+        ]
     }],
-    "permissions": ["activeTab", "storage"]
+    "host_permissions": [
+        "https://universe.flyff.com/*"
+    ],
+    "permissions": [
+        "activeTab",
+        "storage",
+        "webRequest",
+        "webRequestBlocking"
+    ]
 }

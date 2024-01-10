@@ -481,21 +481,24 @@ class Cetus {
 
                 break;
             case "bytes":
-                const split1 = [...searchParam.trim().matchAll(/\\x[0-9a-f]{2}(?![0-9a-z])/gi)];
-                const split2 = searchParam.trim().split(/\\x/);
+                if (Array.isArray(searchParam)) {
+                    realParam = new Uint8Array(searchParam);
+                } else {
+                    const split1 = [...searchParam.trim().matchAll(/\\x[0-9a-f]{2}(?![0-9a-z])/gi)];
+                    const split2 = searchParam.trim().split(/\\x/);
 
-                if ((split1.length != (split2.length - 1)) || split1.length == 0) {
-                    // Something is wrong in the byte sequence
-                    console.error("Wrong byte sequence format");
-                    return;
-                }
+                    if ((split1.length != (split2.length - 1)) || split1.length == 0) {
+                        // Something is wrong in the byte sequence
+                        console.error("Wrong byte sequence format");
+                        return;
+                    }
 
-                split2.shift();
+                    split2.shift();
 
-                realParam = new Uint8Array(split2.length);
-
-                for (let i = 0; i < searchParam.length; i++) {
-                    realParam[i] = parseInt(split2[i], 16);
+                    realParam = new Uint8Array(split2.length);
+                    for (let i = 0; i < searchParam.length; i++) {
+                        realParam[i] = parseInt(split2[i], 16);
+                    }
                 }
 
                 break;

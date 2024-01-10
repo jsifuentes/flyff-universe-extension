@@ -1,773 +1,904 @@
-const SECTION_CUSTOM = 0;
-const SECTION_TYPE = 1;
-const SECTION_IMPORT = 2;
-const SECTION_FUNCTION = 3;
-const SECTION_TABLE = 4;
-const SECTION_MEMORY = 5;
-const SECTION_GLOBAL = 6;
-const SECTION_EXPORT = 7;
-const SECTION_START = 8;
-const SECTION_ELEMENT = 9;
-const SECTION_CODE = 10;
-const SECTION_DATA = 11;
-const SECTION_DATACOUNT = 12;
-const MAX_SECTION_ID = 12;
-const KIND_FUNC = 0;
-const KIND_TABLE = 1;
-const KIND_MEMORY = 2;
-const KIND_GLOBAL = 3;
+/**
+Copyright 2019 Jack Baker
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+const SECTION_CUSTOM         = 0;
+const SECTION_TYPE           = 1;
+const SECTION_IMPORT         = 2;
+const SECTION_FUNCTION       = 3;
+const SECTION_TABLE          = 4;
+const SECTION_MEMORY         = 5;
+const SECTION_GLOBAL         = 6;
+const SECTION_EXPORT         = 7;
+const SECTION_START          = 8;
+const SECTION_ELEMENT        = 9;
+const SECTION_CODE           = 10;
+const SECTION_DATA           = 11;
+const SECTION_DATACOUNT      = 12
+
+const MAX_SECTION_ID         = 12;
+
+const KIND_FUNC              = 0x00;
+const KIND_TABLE             = 0x01;
+const KIND_MEMORY            = 0x02;
+const KIND_GLOBAL            = 0x03;
+
 const kindStr = {
-    func: KIND_FUNC,
-    table: KIND_TABLE,
-    memory: KIND_MEMORY,
-    global: KIND_GLOBAL
+    "func": KIND_FUNC,
+    "table": KIND_TABLE,
+    "memory": KIND_MEMORY,
+    "global": KIND_GLOBAL
 };
-const convertKind = function (string) {
+
+const convertKind = function(string) {
     const kindVal = kindStr[string];
+
     if (typeof kindVal === "undefined") {
-        throw new Error("Invalid kind " + string)
+        throw new Error("Invalid kind "+string);
     }
-    return kindVal
+
+    return kindVal;
 };
-const VALUE_TYPE_I32 = 127;
-const VALUE_TYPE_I64 = 126;
-const VALUE_TYPE_F32 = 125;
-const VALUE_TYPE_F64 = 124;
-const VALUE_TYPE_V128 = 123;
-const VALUE_TYPE_ANYFUNC = 112;
-const VALUE_TYPE_FUNC = 96;
-const VALUE_TYPE_BLOCK = 64;
+
+const VALUE_TYPE_I32         = 0x7f;
+const VALUE_TYPE_I64         = 0x7e;
+const VALUE_TYPE_F32         = 0x7d;
+const VALUE_TYPE_F64         = 0x7c;
+const VALUE_TYPE_V128        = 0x7b;
+const VALUE_TYPE_ANYFUNC     = 0x70;
+const VALUE_TYPE_FUNC        = 0x60;
+const VALUE_TYPE_BLOCK       = 0x40;
+
 const valueTypeStr = {
-    i32: VALUE_TYPE_I32,
-    i64: VALUE_TYPE_I64,
-    f32: VALUE_TYPE_F32,
-    f64: VALUE_TYPE_F64,
-    v128: VALUE_TYPE_V128,
-    anyfunc: VALUE_TYPE_ANYFUNC,
-    func: VALUE_TYPE_FUNC,
-    block: VALUE_TYPE_BLOCK
+    "i32": VALUE_TYPE_I32,
+    "i64": VALUE_TYPE_I64,
+    "f32": VALUE_TYPE_F32,
+    "f64": VALUE_TYPE_F64,
+    "v128": VALUE_TYPE_V128,
+    "anyfunc": VALUE_TYPE_ANYFUNC,
+    "func": VALUE_TYPE_FUNC,
+    "block": VALUE_TYPE_BLOCK
 };
-const convertValueType = function (string) {
+
+const convertValueType = function(string) {
     const typeVal = valueTypeStr[string];
+
     if (typeof typeVal === "undefined") {
-        throw new Error("Invalid value type " + string)
+        throw new Error("Invalid value type "+string);
     }
-    return typeVal
+
+    return typeVal;
 };
-const ELEM_SEG_FLAG_NONE = 0;
-const ELEM_SEG_FLAG_PASSIVE = 1;
-const ELEM_SEG_FLAG_EXPLICIT_INDEX = 2;
-const ELEM_SEG_FLAG_DECLARED = 3;
-const ELEM_SEG_FLAG_USE_ELEM_EXPRS = 4;
-const OP_UNREACHABLE = 0;
-const OP_NOP = 1;
-const OP_BLOCK = 2;
-const OP_LOOP = 3;
-const OP_IF = 4;
-const OP_ELSE = 5;
-const OP_TRY = 6;
-const OP_CATCH = 7;
-const OP_THROW = 8;
-const OP_RETHROW = 9;
-const OP_END = 11;
-const OP_BR = 12;
-const OP_BR_IF = 13;
-const OP_BR_TABLE = 14;
-const OP_RETURN = 15;
-const OP_CALL = 16;
-const OP_CALL_INDIRECT = 17;
-const OP_DROP = 26;
-const OP_SELECT = 27;
-const OP_GET_LOCAL = 32;
-const OP_SET_LOCAL = 33;
-const OP_TEE_LOCAL = 34;
-const OP_GET_GLOBAL = 35;
-const OP_SET_GLOBAL = 36;
-const OP_TABLE_GET = 37;
-const OP_TABLE_SET = 38;
-const OP_I32_LOAD = 40;
-const OP_I64_LOAD = 41;
-const OP_F32_LOAD = 42;
-const OP_F64_LOAD = 43;
-const OP_I32_LOAD8_S = 44;
-const OP_I32_LOAD8_U = 45;
-const OP_I32_LOAD16_S = 46;
-const OP_I32_LOAD16_U = 47;
-const OP_I64_LOAD8_S = 48;
-const OP_I64_LOAD8_U = 49;
-const OP_I64_LOAD16_S = 50;
-const OP_I64_LOAD16_U = 51;
-const OP_I64_LOAD32_S = 52;
-const OP_I64_LOAD32_U = 53;
-const OP_I32_STORE = 54;
-const OP_I64_STORE = 55;
-const OP_F32_STORE = 56;
-const OP_F64_STORE = 57;
-const OP_I32_STORE8 = 58;
-const OP_I32_STORE16 = 59;
-const OP_I64_STORE8 = 60;
-const OP_I64_STORE16 = 61;
-const OP_I64_STORE32 = 62;
-const OP_MEMORY_SIZE = 63;
-const OP_MEMORY_GROW = 64;
-const OP_I32_CONST = 65;
-const OP_I64_CONST = 66;
-const OP_F32_CONST = 67;
-const OP_F64_CONST = 68;
-const OP_I32_EQZ = 69;
-const OP_I32_EQ = 70;
-const OP_I32_NE = 71;
-const OP_I32_LT_S = 72;
-const OP_I32_LT_U = 73;
-const OP_I32_GT_S = 74;
-const OP_I32_GT_U = 75;
-const OP_I32_LE_S = 76;
-const OP_I32_LE_U = 77;
-const OP_I32_GE_S = 78;
-const OP_I32_GE_U = 79;
-const OP_I64_EQZ = 80;
-const OP_I64_EQ = 81;
-const OP_I64_NE = 82;
-const OP_I64_LT_S = 83;
-const OP_I64_LT_U = 84;
-const OP_I64_GT_S = 85;
-const OP_I64_GT_U = 86;
-const OP_I64_LE_S = 87;
-const OP_I64_LE_U = 88;
-const OP_I64_GE_S = 89;
-const OP_I64_GE_U = 90;
-const OP_F32_EQ = 91;
-const OP_F32_NE = 92;
-const OP_F32_LT = 93;
-const OP_F32_GT = 94;
-const OP_F32_LE = 95;
-const OP_F32_GE = 96;
-const OP_F64_EQ = 97;
-const OP_F64_NE = 98;
-const OP_F64_LT = 99;
-const OP_F64_GT = 100;
-const OP_F64_LE = 101;
-const OP_F64_GE = 102;
-const OP_I32_CLZ = 103;
-const OP_I32_CTZ = 104;
-const OP_I32_POPCNT = 105;
-const OP_I32_ADD = 106;
-const OP_I32_SUB = 107;
-const OP_I32_MUL = 108;
-const OP_I32_DIV_S = 109;
-const OP_I32_DIV_U = 110;
-const OP_I32_REM_S = 111;
-const OP_I32_REM_U = 112;
-const OP_I32_AND = 113;
-const OP_I32_OR = 114;
-const OP_I32_XOR = 115;
-const OP_I32_SHL = 116;
-const OP_I32_SHR_S = 117;
-const OP_I32_SHR_U = 118;
-const OP_I32_ROTL = 119;
-const OP_I32_ROTR = 120;
-const OP_I64_CLZ = 121;
-const OP_I64_CTZ = 122;
-const OP_I64_POPCNT = 123;
-const OP_I64_ADD = 124;
-const OP_I64_SUB = 125;
-const OP_I64_MUL = 126;
-const OP_I64_DIV_S = 127;
-const OP_I64_DIV_U = 128;
-const OP_I64_REM_S = 129;
-const OP_I64_REM_U = 130;
-const OP_I64_AND = 131;
-const OP_I64_OR = 132;
-const OP_I64_XOR = 133;
-const OP_I64_SHL = 134;
-const OP_I64_SHR_S = 135;
-const OP_I64_SHR_U = 136;
-const OP_I64_ROTL = 137;
-const OP_I64_ROTR = 138;
-const OP_F32_ABS = 139;
-const OP_F32_NEG = 140;
-const OP_F32_CEIL = 141;
-const OP_F32_FLOOR = 142;
-const OP_F32_TRUNC = 143;
-const OP_F32_NEAREST = 144;
-const OP_F32_SQRT = 145;
-const OP_F32_ADD = 146;
-const OP_F32_SUB = 147;
-const OP_F32_MUL = 148;
-const OP_F32_DIV = 149;
-const OP_F32_MIN = 150;
-const OP_F32_MAX = 151;
-const OP_F32_COPYSIGN = 152;
-const OP_F64_ABS = 153;
-const OP_F64_NEG = 154;
-const OP_F64_CEIL = 155;
-const OP_F64_FLOOR = 156;
-const OP_F64_TRUNC = 157;
-const OP_F64_NEAREST = 158;
-const OP_F64_SQRT = 159;
-const OP_F64_ADD = 160;
-const OP_F64_SUB = 161;
-const OP_F64_MUL = 162;
-const OP_F64_DIV = 163;
-const OP_F64_MIN = 164;
-const OP_F64_MAX = 165;
-const OP_F64_COPYSIGN = 166;
-const OP_I32_WRAP_I64 = 167;
-const OP_I32_TRUNC_S_F32 = 168;
-const OP_I32_TRUNC_U_F32 = 169;
-const OP_I32_TRUNC_S_F64 = 170;
-const OP_I32_TRUNC_U_F64 = 171;
-const OP_I64_EXTEND_S_I32 = 172;
-const OP_I64_EXTEND_U_I32 = 173;
-const OP_I64_TRUNC_S_F32 = 174;
-const OP_I64_TRUNC_U_F32 = 175;
-const OP_I64_TRUNC_S_F64 = 176;
-const OP_I64_TRUNC_U_F64 = 177;
-const OP_F32_CONVERT_S_I32 = 178;
-const OP_F32_CONVERT_U_I32 = 179;
-const OP_F32_CONVERT_S_I64 = 180;
-const OP_F32_CONVERT_U_I64 = 181;
-const OP_F32_DEMOTE_F64 = 182;
-const OP_F64_CONVERT_S_I32 = 183;
-const OP_F64_CONVERT_U_I32 = 184;
-const OP_F64_CONVERT_S_I64 = 185;
-const OP_F64_CONVERT_U_I64 = 186;
-const OP_F64_PROMOTE_F32 = 187;
-const OP_I32_REINTERPRET_F32 = 188;
-const OP_I64_REINTERPRET_F64 = 189;
-const OP_F32_REINTERPRET_I32 = 190;
-const OP_F64_REINTERPRET_I64 = 191;
-const OP_I32_EXTEND8_S = 192;
-const OP_I32_EXTEND16_S = 193;
-const OP_I64_EXTEND8_S = 194;
-const OP_I64_EXTEND16_S = 195;
-const OP_I64_EXTEND32_S = 196;
-const OP_REF_NULL = 208;
-const OP_REF_IS_NULL = 209;
-const OP_REF_FUNC = 210;
-const OP_REF_AS_NON_NULL = 211;
-const OP_BR_ON_NULL = 212;
-const OP_REF_EQ = 213;
-const OP_BR_ON_NON_NULL = 214;
-const OP_MISC = 252;
-const OP_SIMD = 253;
-const OP_ATOMIC = 254;
-const ARG_I32_TRUNC_SAT_F32_S = 0;
-const ARG_I32_TRUNC_SAT_F32_U = 1;
-const ARG_I32_TRUNC_SAT_F64_S = 2;
-const ARG_I32_TRUNC_SAT_F64_U = 3;
-const ARG_I64_TRUNC_SAT_F32_S = 4;
-const ARG_I64_TRUNC_SAT_F32_U = 5;
-const ARG_I64_TRUNC_SAT_F64_S = 6;
-const ARG_I64_TRUNC_SAT_F64_U = 7;
-const ARG_MEMORY_INIT = 8;
-const ARG_DATA_DROP = 9;
-const ARG_MEMORY_COPY = 10;
-const ARG_MEMORY_FILL = 11;
-const ARG_TABLE_INIT = 12;
-const ARG_ELEM_DROP = 13;
-const ARG_TABLE_COPY = 14;
-const ARG_TABLE_GROW = 15;
-const SIMD_V128_LOAD = 0;
-const SIMD_V128_LOAD8X8_S = 1;
-const SIMD_V128_LOAD8X8_U = 2;
-const SIMD_V128_LOAD16X4_S = 3;
-const SIMD_V128_LOAD16X4_U = 4;
-const SIMD_V128_LOAD32X2_S = 5;
-const SIMD_V128_LOAD32X2_U = 6;
-const SIMD_V128_LOAD8_SPLAT = 7;
-const SIMD_V128_LOAD16_SPLAT = 8;
-const SIMD_V128_LOAD32_SPLAT = 9;
-const SIMD_V128_LOAD64_SPLAT = 10;
-const SIMD_V128_STORE = 11;
-const SIMD_V128_CONST = 12;
-const SIMD_I8X16_SHUFFLE = 13;
-const SIMD_I8X16_SWIZZLE = 14;
-const SIMD_I8X16_SPLAT = 15;
-const SIMD_I16X8_SPLAT = 16;
-const SIMD_I32X4_SPLAT = 17;
-const SIMD_I64X2_SPLAT = 18;
-const SIMD_F32X4_SPLAT = 19;
-const SIMD_F64X2_SPLAT = 20;
-const SIMD_I8X16_EXTRACT_LANE_S = 21;
-const SIMD_I8X16_EXTRACT_LANE_U = 22;
-const SIMD_I8X16_REPLACE_LANE = 23;
-const SIMD_I16X8_EXTRACT_LANE_S = 24;
-const SIMD_I16X8_EXTRACT_LANE_U = 25;
-const SIMD_I16X8_REPLACE_LANE = 26;
-const SIMD_I32X4_EXTRACT_LANE = 27;
-const SIMD_I32X4_REPLACE_LANE = 28;
-const SIMD_I64X2_EXTRACT_LANE = 29;
-const SIMD_I64X2_REPLACE_LANE = 30;
-const SIMD_F32X4_EXTRACT_LANE = 31;
-const SIMD_F32X4_REPLACE_LANE = 32;
-const SIMD_F64X2_EXTRACT_LANE = 33;
-const SIMD_F64X2_REPLACE_LANE = 34;
-const SIMD_I8X16_EQ = 35;
-const SIMD_I8X16_NE = 36;
-const SIMD_I8X16_LT_S = 37;
-const SIMD_I8X16_LT_U = 38;
-const SIMD_I8X16_GT_S = 39;
-const SIMD_I8X16_GT_U = 40;
-const SIMD_I8X16_LE_S = 41;
-const SIMD_I8X16_LE_U = 42;
-const SIMD_I8X16_GE_S = 43;
-const SIMD_I8X16_GE_U = 44;
-const SIMD_I16X8_EQ = 45;
-const SIMD_I16X8_NE = 46;
-const SIMD_I16X8_LT_S = 47;
-const SIMD_I16X8_LT_U = 48;
-const SIMD_I16X8_GT_S = 49;
-const SIMD_I16X8_GT_U = 50;
-const SIMD_I16X8_LE_S = 51;
-const SIMD_I16X8_LE_U = 52;
-const SIMD_I16X8_GE_S = 53;
-const SIMD_I16X8_GE_U = 54;
-const SIMD_I32X4_EQ = 55;
-const SIMD_I32X4_NE = 56;
-const SIMD_I32X4_LT_S = 57;
-const SIMD_I32X4_LT_U = 58;
-const SIMD_I32X4_GT_S = 59;
-const SIMD_I32X4_GT_U = 60;
-const SIMD_I32X4_LE_S = 61;
-const SIMD_I32X4_LE_U = 62;
-const SIMD_I32X4_GE_S = 63;
-const SIMD_I32X4_GE_U = 64;
-const SIMD_F32X4_EQ = 65;
-const SIMD_F32X4_NE = 66;
-const SIMD_F32X4_LT = 67;
-const SIMD_F32X4_GT = 68;
-const SIMD_F32X4_LE = 69;
-const SIMD_F32X4_GE = 70;
-const SIMD_F64X2_EQ = 71;
-const SIMD_F64X2_NE = 72;
-const SIMD_F64X2_LT = 73;
-const SIMD_F64X2_GT = 74;
-const SIMD_F64X2_LE = 75;
-const SIMD_F64X2_GE = 76;
-const SIMD_V128_NOT = 77;
-const SIMD_V128_AND = 78;
-const SIMD_V128_ANDNOT = 79;
-const SIMD_V128_OR = 80;
-const SIMD_V128_XOR = 81;
-const SIMD_V128_BITSELECT = 82;
-const SIMD_I8X16_ABS = 96;
-const SIMD_I8X16_NEG = 97;
-const SIMD_I8X16_ALL_TRUE = 99;
-const SIMD_I8X16_BITMASK = 100;
-const SIMD_I8X16_NARROW_I16X8_S = 101;
-const SIMD_I8X16_NARROW_I16X8_U = 102;
-const SIMD_I8X16_SHL = 107;
-const SIMD_I8X16_SHR_S = 108;
-const SIMD_I8X16_SHR_U = 109;
-const SIMD_I8X16_ADD = 110;
-const SIMD_I8X16_ADD_SAT_S = 111;
-const SIMD_I8X16_ADD_SAT_U = 112;
-const SIMD_I8X16_SUB = 113;
-const SIMD_I8X16_SUB_SAT_S = 114;
-const SIMD_I8X16_SUB_SAT_U = 115;
-const SIMD_I8X16_MIN_S = 118;
-const SIMD_I8X16_MIN_U = 119;
-const SIMD_I8X16_MAX_S = 120;
-const SIMD_I8X16_MAX_U = 121;
-const SIMD_I8X16_AVGR_U = 123;
-const SIMD_I16X8_ABS = 128;
-const SIMD_I16X8_NEG = 129;
-const SIMD_I16X8_ALL_TRUE = 131;
-const SIMD_I16X8_BITMASK = 132;
-const SIMD_I16X8_NARROW_I32X4_S = 133;
-const SIMD_I16X8_NARROW_I32X4_U = 134;
-const SIMD_I16X8_EXTEND_LOW_I8X16_S = 135;
-const SIMD_I16X8_EXTEND_HIGH_I8X16_S = 136;
-const SIMD_I16X8_EXTEND_LOW_I8X16_U = 137;
-const SIMD_I16X8_EXTEND_HIGH_I8X16_U = 138;
-const SIMD_I16X8_SHL = 139;
-const SIMD_I16X8_SHR_S = 140;
-const SIMD_I16X8_SHR_U = 141;
-const SIMD_I16X8_ADD = 142;
-const SIMD_I16X8_ADD_SAT_S = 143;
-const SIMD_I16X8_ADD_SAT_U = 144;
-const SIMD_I16X8_SUB = 145;
-const SIMD_I16X8_SUB_SAT_S = 146;
-const SIMD_I16X8_SUB_SAT_U = 147;
-const SIMD_I16X8_MUL = 149;
-const SIMD_I16X8_MIN_S = 150;
-const SIMD_I16X8_MIN_U = 151;
-const SIMD_I16X8_MAX_S = 152;
-const SIMD_I16X8_MAX_U = 153;
-const SIMD_I16X8_AVGR_U = 155;
-const SIMD_I32X4_ABS = 160;
-const SIMD_I32X4_NEG = 161;
-const SIMD_I32X4_ALL_TRUE = 163;
-const SIMD_I32X4_BITMASK = 164;
-const SIMD_I32X4_EXTEND_LOW_I16X8_S = 167;
-const SIMD_I32X4_EXTEND_HIGH_I16X8_S = 168;
-const SIMD_I32X4_EXTEND_LOW_I16X8_U = 169;
-const SIMD_I32X4_EXTEND_HIGH_I16X8_U = 170;
-const SIMD_I32X4_SHL = 171;
-const SIMD_I32X4_SHR_S = 172;
-const SIMD_I32X4_SHR_U = 173;
-const SIMD_I32X4_ADD = 174;
-const SIMD_I32X4_SUB = 177;
-const SIMD_I32X4_MUL = 181;
-const SIMD_I32X4_MIN_S = 182;
-const SIMD_I32X4_MIN_U = 183;
-const SIMD_I32X4_MAX_S = 184;
-const SIMD_I32X4_MAX_U = 185;
-const SIMD_I32X4_DOT_I16X8_S = 186;
-const SIMD_I64X2_ABS = 192;
-const SIMD_I64X2_NEG = 193;
-const SIMD_I64X2_BITMASK = 196;
-const SIMD_I64X2_EXTEND_LOW_I32X4_S = 199;
-const SIMD_I64X2_EXTEND_HIGH_I32X4_S = 200;
-const SIMD_I64X2_EXTEND_LOW_I32X4_U = 201;
-const SIMD_I64X2_EXTEND_HIGH_I32X4_U = 202;
-const SIMD_I64X2_SHL = 203;
-const SIMD_I64X2_SHR_S = 204;
-const SIMD_I64X2_SHR_U = 205;
-const SIMD_I64X2_ADD = 206;
-const SIMD_I64X2_SUB = 209;
-const SIMD_I64X2_MUL = 213;
-const SIMD_F32X4_CEIL = 103;
-const SIMD_F32X4_FLOOR = 104;
-const SIMD_F32X4_TRUNC = 105;
-const SIMD_F32X4_NEAREST = 106;
-const SIMD_F64X2_CEIL = 116;
-const SIMD_F64X2_FLOOR = 117;
-const SIMD_F64X2_TRUNC = 122;
-const SIMD_F64X2_NEAREST = 148;
-const SIMD_F32X4_ABS = 224;
-const SIMD_F32X4_NEG = 225;
-const SIMD_F32X4_SQRT = 227;
-const SIMD_F32X4_ADD = 228;
-const SIMD_F32X4_SUB = 229;
-const SIMD_F32X4_MUL = 230;
-const SIMD_F32X4_DIV = 231;
-const SIMD_F32X4_MIN = 232;
-const SIMD_F32X4_MAX = 233;
-const SIMD_F32X4_PMIN = 234;
-const SIMD_F32X4_PMAX = 235;
-const SIMD_F64X2_ABS = 236;
-const SIMD_F64X2_NEG = 237;
-const SIMD_F64X2_SQRT = 239;
-const SIMD_F64X2_ADD = 240;
-const SIMD_F64X2_SUB = 241;
-const SIMD_F64X2_MUL = 242;
-const SIMD_F64X2_DIV = 243;
-const SIMD_F64X2_MIN = 244;
-const SIMD_F64X2_MAX = 245;
-const SIMD_F64X2_PMIN = 246;
-const SIMD_F64X2_PMAX = 247;
-const SIMD_I32X4_TRUNC_SAT_F32X4_S = 248;
-const SIMD_I32X4_TRUNC_SAT_F32X4_U = 249;
-const SIMD_F32X4_CONVERT_I32X4_S = 250;
-const SIMD_F32X4_CONVERT_I32X4_U = 251;
-const SIMD_V128_LOAD32_ZERO = 92;
-const SIMD_V128_LOAD64_ZERO = 93;
-const SIMD_I16X8_EXTMUL_LOW_I8X16_S = 156;
-const SIMD_I16X8_EXTMUL_HIGH_I8X16_S = 157;
-const SIMD_I16X8_EXTMUL_LOW_I8X16_U = 158;
-const SIMD_I16X8_EXTMUL_HIGH_I8X16_U = 159;
-const SIMD_I32X4_EXTMUL_LOW_I16X8_S = 188;
-const SIMD_I32X4_EXTMUL_HIGH_I16X8_S = 189;
-const SIMD_I32X4_EXTMUL_LOW_I16X8_U = 190;
-const SIMD_I32X4_EXTMUL_HIGH_I16X8_U = 191;
-const SIMD_I64X2_EXTMUL_LOW_I32X4_S = 220;
-const SIMD_I64X2_EXTMUL_HIGH_I32X4_S = 221;
-const SIMD_I64X2_EXTMUL_LOW_I32X4_U = 222;
-const SIMD_I64X2_EXTMUL_HIGH_I32X4_U = 223;
-const SIMD_I16X8_Q15MULR_SAT_S = 130;
-const SIMD_V128_ANY_TRUE = 83;
-const SIMD_V128_LOAD8_LANE = 84;
-const SIMD_V128_LOAD16_LANE = 85;
-const SIMD_V128_LOAD32_LANE = 86;
-const SIMD_V128_LOAD64_LANE = 87;
-const SIMD_V128_STORE8_LANE = 88;
-const SIMD_V128_STORE16_LANE = 89;
-const SIMD_V128_STORE32_LANE = 90;
-const SIMD_V128_STORE64_LANE = 91;
-const SIMD_I64X2_EQ = 214;
-const SIMD_I64X2_NE = 215;
-const SIMD_I64X2_LT_S = 216;
-const SIMD_I64X2_GT_S = 217;
-const SIMD_I64X2_LE_S = 218;
-const SIMD_I64X2_GE_S = 219;
-const SIMD_I64X2_ALL_TRUE = 195;
-const SIMD_F64X2_CONVERT_LOW_I32X4_S = 254;
-const SIMD_F64X2_CONVERT_LOW_I32X4_U = 255;
-const SIMD_I32X4_TRUNC_SAT_F64X2_S_ZERO = 252;
-const SIMD_I32X4_TRUNC_SAT_F64X2_U_ZERO = 253;
-const SIMD_F32X4_DEMOTE_F64X2_ZERO = 94;
-const SIMD_F64X2_PROMOTE_LOW_F32X4 = 95;
-const SIMD_I8X16_POPCNT = 98;
-const SIMD_I16X8_EXTADD_PAIRWISE_I8X16_S = 124;
-const SIMD_I16X8_EXTADD_PAIRWISE_I8X16_U = 125;
-const SIMD_I32X4_EXTADD_PAIRWISE_I16X8_S = 126;
-const SIMD_I32X4_EXTADD_PAIRWISE_I16X8_U = 127;
-const ARG_ATOMIC_WAKE = 0;
-const ARG_I32_ATOMIC_WAIT = 1;
-const ARG_I64_ATOMIC_WAIT = 2;
-const ARG_I32_ATOMIC_LOAD = 16;
-const ARG_I64_ATOMIC_LOAD = 17;
-const ARG_I32_ATOMIC_LOAD_8U = 18;
-const ARG_I32_ATOMIC_LOAD_16U = 19;
-const ARG_I64_ATOMIC_LOAD_8U = 20;
-const ARG_I64_ATOMIC_LOAD_16U = 21;
-const ARG_I64_ATOMIC_LOAD_32U = 22;
-const ARG_I32_ATOMIC_STORE = 23;
-const ARG_I64_ATOMIC_STORE = 24;
-const ARG_I32_ATOMIC_STORE_8 = 25;
-const ARG_I32_ATOMIC_STORE_16 = 26;
-const ARG_I64_ATOMIC_STORE_8 = 27;
-const ARG_I64_ATOMIC_STORE_16 = 28;
-const ARG_I64_ATOMIC_STORE_32 = 29;
-const ARG_I32_ATOMIC_RMW_ADD = 30;
-const ARG_I64_ATOMIC_RMW_ADD = 31;
-const ARG_I32_ATOMIC_RMW_ADD_8U = 32;
-const ARG_I32_ATOMIC_RMW_ADD_16U = 33;
-const ARG_I64_ATOMIC_RMW_ADD_8U = 34;
-const ARG_I64_ATOMIC_RMW_ADD_16U = 35;
-const ARG_I64_ATOMIC_RMW_ADD_32U = 36;
-const ARG_I32_ATOMIC_RMW_SUB = 37;
-const ARG_I64_ATOMIC_RMW_SUB = 38;
-const ARG_I32_ATOMIC_RMW_SUB_8U = 39;
-const ARG_I32_ATOMIC_RMW_SUB_16U = 40;
-const ARG_I64_ATOMIC_RMW_SUB_8U = 41;
-const ARG_I64_ATOMIC_RMW_SUB_16U = 42;
-const ARG_I64_ATOMIC_RMW_SUB_32U = 43;
-const ARG_I32_ATOMIC_RMW_AND = 44;
-const ARG_I64_ATOMIC_RMW_AND = 45;
-const ARG_I32_ATOMIC_RMW_AND_8U = 46;
-const ARG_I32_ATOMIC_RMW_AND_16U = 47;
-const ARG_I64_ATOMIC_RMW_AND_8U = 48;
-const ARG_I64_ATOMIC_RMW_AND_16U = 49;
-const ARG_I64_ATOMIC_RMW_AND_32U = 50;
-const ARG_I32_ATOMIC_RMW_OR = 51;
-const ARG_I64_ATOMIC_RMW_OR = 52;
-const ARG_I32_ATOMIC_RMW_OR_8U = 53;
-const ARG_I32_ATOMIC_RMW_OR_16U = 54;
-const ARG_I64_ATOMIC_RMW_OR_8U = 55;
-const ARG_I64_ATOMIC_RMW_OR_16U = 56;
-const ARG_I64_ATOMIC_RMW_OR_32U = 57;
-const ARG_I32_ATOMIC_RMW_XOR = 58;
-const ARG_I64_ATOMIC_RMW_XOR = 59;
-const ARG_I32_ATOMIC_RMW_XOR_8U = 60;
-const ARG_I32_ATOMIC_RMW_XOR_16U = 61;
-const ARG_I64_ATOMIC_RMW_XOR_8U = 62;
-const ARG_I64_ATOMIC_RMW_XOR_16U = 63;
-const ARG_I64_ATOMIC_RMW_XOR_32U = 64;
-const ARG_I32_ATOMIC_RMW_XCHG = 65;
-const ARG_I64_ATOMIC_RMW_XCHG = 66;
-const ARG_I32_ATOMIC_RMW_XCHG_8U = 67;
-const ARG_I32_ATOMIC_RMW_XCHG_16U = 68;
-const ARG_I64_ATOMIC_RMW_XCHG_8U = 69;
-const ARG_I64_ATOMIC_RMW_XCHG_16U = 70;
-const ARG_I64_ATOMIC_RMW_XCHG_32U = 71;
-const ARG_I32_ATOMIC_RMW_CMPXCHG = 72;
-const ARG_I64_ATOMIC_RMW_CMPXCHG = 73;
-const ARG_I32_ATOMIC_RMW_CMPXCHG_8U = 74;
-const ARG_I32_ATOMIC_RMW_CMPXCHG_16U = 75;
-const ARG_I64_ATOMIC_RMW_CMPXCHG_8U = 76;
-const ARG_I64_ATOMIC_RMW_CMPXCHG_16U = 77;
-const ARG_I64_ATOMIC_RMW_CMPXCHG_32U = 78;
-const convertOpcode = function (string) {
+
+const ELEM_SEG_FLAG_NONE           = 0x00;
+const ELEM_SEG_FLAG_PASSIVE        = 0x01;
+const ELEM_SEG_FLAG_EXPLICIT_INDEX = 0x02;
+const ELEM_SEG_FLAG_DECLARED       = 0x03;
+const ELEM_SEG_FLAG_USE_ELEM_EXPRS = 0x04;
+
+const OP_UNREACHABLE         = 0x00;
+const OP_NOP                 = 0x01;
+const OP_BLOCK               = 0x02;
+const OP_LOOP                = 0x03;
+const OP_IF                  = 0x04;
+const OP_ELSE                = 0x05;
+const OP_TRY                 = 0x06;
+const OP_CATCH               = 0x07;
+const OP_THROW               = 0x08;
+const OP_RETHROW             = 0x09;
+const OP_END                 = 0x0b;
+const OP_BR                  = 0x0c;
+const OP_BR_IF               = 0x0d;
+const OP_BR_TABLE            = 0x0e;
+const OP_RETURN              = 0x0f;
+const OP_CALL                = 0x10;
+const OP_CALL_INDIRECT       = 0x11;
+const OP_DROP                = 0x1a;
+const OP_SELECT              = 0x1b;
+const OP_GET_LOCAL           = 0x20;
+const OP_SET_LOCAL           = 0x21;
+const OP_TEE_LOCAL           = 0x22;
+const OP_GET_GLOBAL          = 0x23;
+const OP_SET_GLOBAL          = 0x24;
+const OP_TABLE_GET           = 0x25;
+const OP_TABLE_SET           = 0x26;
+const OP_I32_LOAD            = 0x28;
+const OP_I64_LOAD            = 0x29;
+const OP_F32_LOAD            = 0x2a;
+const OP_F64_LOAD            = 0x2b;
+const OP_I32_LOAD8_S         = 0x2c;
+const OP_I32_LOAD8_U         = 0x2d;
+const OP_I32_LOAD16_S        = 0x2e;
+const OP_I32_LOAD16_U        = 0x2f;
+const OP_I64_LOAD8_S         = 0x30;
+const OP_I64_LOAD8_U         = 0x31;
+const OP_I64_LOAD16_S        = 0x32;
+const OP_I64_LOAD16_U        = 0x33;
+const OP_I64_LOAD32_S        = 0x34;
+const OP_I64_LOAD32_U        = 0x35;
+const OP_I32_STORE           = 0x36;
+const OP_I64_STORE           = 0x37;
+const OP_F32_STORE           = 0x38;
+const OP_F64_STORE           = 0x39;
+const OP_I32_STORE8          = 0x3a;
+const OP_I32_STORE16         = 0x3b;
+const OP_I64_STORE8          = 0x3c;
+const OP_I64_STORE16         = 0x3d;
+const OP_I64_STORE32         = 0x3e;
+const OP_MEMORY_SIZE         = 0x3f;
+const OP_MEMORY_GROW         = 0x40;
+const OP_I32_CONST           = 0x41;
+const OP_I64_CONST           = 0x42;
+const OP_F32_CONST           = 0x43;
+const OP_F64_CONST           = 0x44;
+const OP_I32_EQZ             = 0x45;
+const OP_I32_EQ              = 0x46;
+const OP_I32_NE              = 0x47;
+const OP_I32_LT_S            = 0x48;
+const OP_I32_LT_U            = 0x49;
+const OP_I32_GT_S            = 0x4a;
+const OP_I32_GT_U            = 0x4b;
+const OP_I32_LE_S            = 0x4c;
+const OP_I32_LE_U            = 0x4d;
+const OP_I32_GE_S            = 0x4e;
+const OP_I32_GE_U            = 0x4f;
+const OP_I64_EQZ             = 0x50;
+const OP_I64_EQ              = 0x51;
+const OP_I64_NE              = 0x52;
+const OP_I64_LT_S            = 0x53;
+const OP_I64_LT_U            = 0x54;
+const OP_I64_GT_S            = 0x55;
+const OP_I64_GT_U            = 0x56;
+const OP_I64_LE_S            = 0x57;
+const OP_I64_LE_U            = 0x58;
+const OP_I64_GE_S            = 0x59;
+const OP_I64_GE_U            = 0x5a;
+const OP_F32_EQ              = 0x5b;
+const OP_F32_NE              = 0x5c;
+const OP_F32_LT              = 0x5d;
+const OP_F32_GT              = 0x5e;
+const OP_F32_LE              = 0x5f;
+const OP_F32_GE              = 0x60;
+const OP_F64_EQ              = 0x61;
+const OP_F64_NE              = 0x62;
+const OP_F64_LT              = 0x63;
+const OP_F64_GT              = 0x64;
+const OP_F64_LE              = 0x65;
+const OP_F64_GE              = 0x66;
+const OP_I32_CLZ             = 0x67;
+const OP_I32_CTZ             = 0x68;
+const OP_I32_POPCNT          = 0x69;
+const OP_I32_ADD             = 0x6a;
+const OP_I32_SUB             = 0x6b;
+const OP_I32_MUL             = 0x6c;
+const OP_I32_DIV_S           = 0x6d;
+const OP_I32_DIV_U           = 0x6e;
+const OP_I32_REM_S           = 0x6f;
+const OP_I32_REM_U           = 0x70;
+const OP_I32_AND             = 0x71;
+const OP_I32_OR              = 0x72;
+const OP_I32_XOR             = 0x73;
+const OP_I32_SHL             = 0x74;
+const OP_I32_SHR_S           = 0x75;
+const OP_I32_SHR_U           = 0x76;
+const OP_I32_ROTL            = 0x77;
+const OP_I32_ROTR            = 0x78;
+const OP_I64_CLZ             = 0x79;
+const OP_I64_CTZ             = 0x7a;
+const OP_I64_POPCNT          = 0x7b;
+const OP_I64_ADD             = 0x7c;
+const OP_I64_SUB             = 0x7d;
+const OP_I64_MUL             = 0x7e;
+const OP_I64_DIV_S           = 0x7f;
+const OP_I64_DIV_U           = 0x80;
+const OP_I64_REM_S           = 0x81;
+const OP_I64_REM_U           = 0x82;
+const OP_I64_AND             = 0x83;
+const OP_I64_OR              = 0x84;
+const OP_I64_XOR             = 0x85;
+const OP_I64_SHL             = 0x86;
+const OP_I64_SHR_S           = 0x87;
+const OP_I64_SHR_U           = 0x88;
+const OP_I64_ROTL            = 0x89;
+const OP_I64_ROTR            = 0x8a;
+const OP_F32_ABS             = 0x8b;
+const OP_F32_NEG             = 0x8c;
+const OP_F32_CEIL            = 0x8d;
+const OP_F32_FLOOR           = 0x8e;
+const OP_F32_TRUNC           = 0x8f;
+const OP_F32_NEAREST         = 0x90;
+const OP_F32_SQRT            = 0x91;
+const OP_F32_ADD             = 0x92;
+const OP_F32_SUB             = 0x93;
+const OP_F32_MUL             = 0x94;
+const OP_F32_DIV             = 0x95;
+const OP_F32_MIN             = 0x96;
+const OP_F32_MAX             = 0x97;
+const OP_F32_COPYSIGN        = 0x98;
+const OP_F64_ABS             = 0x99;
+const OP_F64_NEG             = 0x9a;
+const OP_F64_CEIL            = 0x9b;
+const OP_F64_FLOOR           = 0x9c;
+const OP_F64_TRUNC           = 0x9d;
+const OP_F64_NEAREST         = 0x9e;
+const OP_F64_SQRT            = 0x9f;
+const OP_F64_ADD             = 0xa0;
+const OP_F64_SUB             = 0xa1;
+const OP_F64_MUL             = 0xa2;
+const OP_F64_DIV             = 0xa3;
+const OP_F64_MIN             = 0xa4;
+const OP_F64_MAX             = 0xa5;
+const OP_F64_COPYSIGN        = 0xa6;
+const OP_I32_WRAP_I64        = 0xa7;
+const OP_I32_TRUNC_S_F32     = 0xa8;
+const OP_I32_TRUNC_U_F32     = 0xa9;
+const OP_I32_TRUNC_S_F64     = 0xaa;
+const OP_I32_TRUNC_U_F64     = 0xab;
+const OP_I64_EXTEND_S_I32    = 0xac;
+const OP_I64_EXTEND_U_I32    = 0xad;
+const OP_I64_TRUNC_S_F32     = 0xae;
+const OP_I64_TRUNC_U_F32     = 0xaf;
+const OP_I64_TRUNC_S_F64     = 0xb0;
+const OP_I64_TRUNC_U_F64     = 0xb1;
+const OP_F32_CONVERT_S_I32   = 0xb2;
+const OP_F32_CONVERT_U_I32   = 0xb3;
+const OP_F32_CONVERT_S_I64   = 0xb4;
+const OP_F32_CONVERT_U_I64   = 0xb5;
+const OP_F32_DEMOTE_F64      = 0xb6;
+const OP_F64_CONVERT_S_I32   = 0xb7;
+const OP_F64_CONVERT_U_I32   = 0xb8;
+const OP_F64_CONVERT_S_I64   = 0xb9;
+const OP_F64_CONVERT_U_I64   = 0xba;
+const OP_F64_PROMOTE_F32     = 0xbb;
+const OP_I32_REINTERPRET_F32 = 0xbc;
+const OP_I64_REINTERPRET_F64 = 0xbd;
+const OP_F32_REINTERPRET_I32 = 0xbe;
+const OP_F64_REINTERPRET_I64 = 0xbf;
+const OP_I32_EXTEND8_S       = 0xc0;
+const OP_I32_EXTEND16_S      = 0xc1;
+const OP_I64_EXTEND8_S       = 0xc2;
+const OP_I64_EXTEND16_S      = 0xc3;
+const OP_I64_EXTEND32_S      = 0xc4;
+const OP_REF_NULL            = 0xd0;
+const OP_REF_IS_NULL         = 0xd1;
+const OP_REF_FUNC            = 0xd2;
+const OP_REF_AS_NON_NULL     = 0xd3;
+const OP_BR_ON_NULL          = 0xd4;
+const OP_REF_EQ              = 0xd5;
+const OP_BR_ON_NON_NULL      = 0xd6;
+const OP_MISC                = 0xfc;
+const OP_SIMD                = 0xfd;
+const OP_ATOMIC              = 0xfe;
+
+const ARG_I32_TRUNC_SAT_F32_S = 0x00;
+const ARG_I32_TRUNC_SAT_F32_U = 0x01;
+const ARG_I32_TRUNC_SAT_F64_S = 0x02;
+const ARG_I32_TRUNC_SAT_F64_U = 0x03;
+const ARG_I64_TRUNC_SAT_F32_S = 0x04;
+const ARG_I64_TRUNC_SAT_F32_U = 0x05;
+const ARG_I64_TRUNC_SAT_F64_S = 0x06;
+const ARG_I64_TRUNC_SAT_F64_U = 0x07;
+const ARG_MEMORY_INIT         = 0x08;
+const ARG_DATA_DROP           = 0x09;
+const ARG_MEMORY_COPY         = 0x0a;
+const ARG_MEMORY_FILL         = 0x0b;
+const ARG_TABLE_INIT          = 0x0c;
+const ARG_ELEM_DROP           = 0x0d;
+const ARG_TABLE_COPY          = 0x0e;
+const ARG_TABLE_GROW          = 0x0f;
+
+const SIMD_V128_LOAD = 0x00;
+const SIMD_V128_LOAD8X8_S = 0x01;
+const SIMD_V128_LOAD8X8_U = 0x02;
+const SIMD_V128_LOAD16X4_S = 0x03;
+const SIMD_V128_LOAD16X4_U = 0x04;
+const SIMD_V128_LOAD32X2_S = 0x05;
+const SIMD_V128_LOAD32X2_U = 0x06;
+const SIMD_V128_LOAD8_SPLAT = 0x07;
+const SIMD_V128_LOAD16_SPLAT = 0x08;
+const SIMD_V128_LOAD32_SPLAT = 0x09;
+const SIMD_V128_LOAD64_SPLAT = 0x0a;
+const SIMD_V128_STORE = 0x0b;
+const SIMD_V128_CONST = 0x0c;
+const SIMD_I8X16_SHUFFLE = 0x0d;
+const SIMD_I8X16_SWIZZLE = 0x0e;
+const SIMD_I8X16_SPLAT = 0x0f;
+const SIMD_I16X8_SPLAT = 0x10;
+const SIMD_I32X4_SPLAT = 0x11;
+const SIMD_I64X2_SPLAT = 0x12;
+const SIMD_F32X4_SPLAT = 0x13;
+const SIMD_F64X2_SPLAT = 0x14;
+const SIMD_I8X16_EXTRACT_LANE_S = 0x15;
+const SIMD_I8X16_EXTRACT_LANE_U = 0x16;
+const SIMD_I8X16_REPLACE_LANE = 0x17;
+const SIMD_I16X8_EXTRACT_LANE_S = 0x18;
+const SIMD_I16X8_EXTRACT_LANE_U = 0x19;
+const SIMD_I16X8_REPLACE_LANE = 0x1a;
+const SIMD_I32X4_EXTRACT_LANE = 0x1b;
+const SIMD_I32X4_REPLACE_LANE = 0x1c;
+const SIMD_I64X2_EXTRACT_LANE = 0x1d;
+const SIMD_I64X2_REPLACE_LANE = 0x1e;
+const SIMD_F32X4_EXTRACT_LANE = 0x1f;
+const SIMD_F32X4_REPLACE_LANE = 0x20;
+const SIMD_F64X2_EXTRACT_LANE = 0x21;
+const SIMD_F64X2_REPLACE_LANE = 0x22;
+const SIMD_I8X16_EQ = 0x23;
+const SIMD_I8X16_NE = 0x24;
+const SIMD_I8X16_LT_S = 0x25;
+const SIMD_I8X16_LT_U = 0x26;
+const SIMD_I8X16_GT_S = 0x27;
+const SIMD_I8X16_GT_U = 0x28;
+const SIMD_I8X16_LE_S = 0x29;
+const SIMD_I8X16_LE_U = 0x2a;
+const SIMD_I8X16_GE_S = 0x2b;
+const SIMD_I8X16_GE_U = 0x2c;
+const SIMD_I16X8_EQ = 0x2d;
+const SIMD_I16X8_NE = 0x2e;
+const SIMD_I16X8_LT_S = 0x2f;
+const SIMD_I16X8_LT_U = 0x30;
+const SIMD_I16X8_GT_S = 0x31;
+const SIMD_I16X8_GT_U = 0x32;
+const SIMD_I16X8_LE_S = 0x33;
+const SIMD_I16X8_LE_U = 0x34;
+const SIMD_I16X8_GE_S = 0x35;
+const SIMD_I16X8_GE_U = 0x36;
+const SIMD_I32X4_EQ = 0x37;
+const SIMD_I32X4_NE = 0x38;
+const SIMD_I32X4_LT_S = 0x39;
+const SIMD_I32X4_LT_U = 0x3a;
+const SIMD_I32X4_GT_S = 0x3b;
+const SIMD_I32X4_GT_U = 0x3c;
+const SIMD_I32X4_LE_S = 0x3d;
+const SIMD_I32X4_LE_U = 0x3e;
+const SIMD_I32X4_GE_S = 0x3f;
+const SIMD_I32X4_GE_U = 0x40;
+const SIMD_F32X4_EQ = 0x41;
+const SIMD_F32X4_NE = 0x42;
+const SIMD_F32X4_LT = 0x43;
+const SIMD_F32X4_GT = 0x44;
+const SIMD_F32X4_LE = 0x45;
+const SIMD_F32X4_GE = 0x46;
+const SIMD_F64X2_EQ = 0x47;
+const SIMD_F64X2_NE = 0x48;
+const SIMD_F64X2_LT = 0x49;
+const SIMD_F64X2_GT = 0x4a;
+const SIMD_F64X2_LE = 0x4b;
+const SIMD_F64X2_GE = 0x4c;
+const SIMD_V128_NOT = 0x4d;
+const SIMD_V128_AND = 0x4e;
+const SIMD_V128_ANDNOT = 0x4f;
+const SIMD_V128_OR = 0x50;
+const SIMD_V128_XOR = 0x51;
+const SIMD_V128_BITSELECT = 0x52;
+const SIMD_I8X16_ABS = 0x60;
+const SIMD_I8X16_NEG = 0x61;
+const SIMD_I8X16_ALL_TRUE = 0x63;
+const SIMD_I8X16_BITMASK = 0x64;
+const SIMD_I8X16_NARROW_I16X8_S = 0x65;
+const SIMD_I8X16_NARROW_I16X8_U = 0x66;
+const SIMD_I8X16_SHL = 0x6b;
+const SIMD_I8X16_SHR_S = 0x6c;
+const SIMD_I8X16_SHR_U = 0x6d;
+const SIMD_I8X16_ADD = 0x6e;
+const SIMD_I8X16_ADD_SAT_S = 0x6f;
+const SIMD_I8X16_ADD_SAT_U = 0x70;
+const SIMD_I8X16_SUB = 0x71;
+const SIMD_I8X16_SUB_SAT_S = 0x72;
+const SIMD_I8X16_SUB_SAT_U = 0x73;
+const SIMD_I8X16_MIN_S = 0x76;
+const SIMD_I8X16_MIN_U = 0x77;
+const SIMD_I8X16_MAX_S = 0x78;
+const SIMD_I8X16_MAX_U = 0x79;
+const SIMD_I8X16_AVGR_U = 0x7b;
+const SIMD_I16X8_ABS = 0x80;
+const SIMD_I16X8_NEG = 0x81;
+const SIMD_I16X8_ALL_TRUE = 0x83;
+const SIMD_I16X8_BITMASK = 0x84;
+const SIMD_I16X8_NARROW_I32X4_S = 0x85;
+const SIMD_I16X8_NARROW_I32X4_U = 0x86;
+const SIMD_I16X8_EXTEND_LOW_I8X16_S = 0x87;
+const SIMD_I16X8_EXTEND_HIGH_I8X16_S = 0x88;
+const SIMD_I16X8_EXTEND_LOW_I8X16_U = 0x89;
+const SIMD_I16X8_EXTEND_HIGH_I8X16_U = 0x8a;
+const SIMD_I16X8_SHL = 0x8b;
+const SIMD_I16X8_SHR_S = 0x8c;
+const SIMD_I16X8_SHR_U = 0x8d;
+const SIMD_I16X8_ADD = 0x8e;
+const SIMD_I16X8_ADD_SAT_S = 0x8f;
+const SIMD_I16X8_ADD_SAT_U = 0x90;
+const SIMD_I16X8_SUB = 0x91;
+const SIMD_I16X8_SUB_SAT_S = 0x92;
+const SIMD_I16X8_SUB_SAT_U = 0x93;
+const SIMD_I16X8_MUL = 0x95;
+const SIMD_I16X8_MIN_S = 0x96;
+const SIMD_I16X8_MIN_U = 0x97;
+const SIMD_I16X8_MAX_S = 0x98;
+const SIMD_I16X8_MAX_U = 0x99;
+const SIMD_I16X8_AVGR_U = 0x9b;
+const SIMD_I32X4_ABS = 0xa0;
+const SIMD_I32X4_NEG = 0xa1;
+const SIMD_I32X4_ALL_TRUE = 0xa3;
+const SIMD_I32X4_BITMASK = 0xa4;
+const SIMD_I32X4_EXTEND_LOW_I16X8_S = 0xa7;
+const SIMD_I32X4_EXTEND_HIGH_I16X8_S = 0xa8;
+const SIMD_I32X4_EXTEND_LOW_I16X8_U = 0xa9;
+const SIMD_I32X4_EXTEND_HIGH_I16X8_U = 0xaa;
+const SIMD_I32X4_SHL = 0xab;
+const SIMD_I32X4_SHR_S = 0xac;
+const SIMD_I32X4_SHR_U = 0xad;
+const SIMD_I32X4_ADD = 0xae;
+const SIMD_I32X4_SUB = 0xb1;
+const SIMD_I32X4_MUL = 0xb5;
+const SIMD_I32X4_MIN_S = 0xb6;
+const SIMD_I32X4_MIN_U = 0xb7;
+const SIMD_I32X4_MAX_S = 0xb8;
+const SIMD_I32X4_MAX_U = 0xb9;
+const SIMD_I32X4_DOT_I16X8_S = 0xba;
+const SIMD_I64X2_ABS = 0xc0;
+const SIMD_I64X2_NEG = 0xc1;
+const SIMD_I64X2_BITMASK = 0xc4;
+const SIMD_I64X2_EXTEND_LOW_I32X4_S = 0xc7;
+const SIMD_I64X2_EXTEND_HIGH_I32X4_S = 0xc8;
+const SIMD_I64X2_EXTEND_LOW_I32X4_U = 0xc9;
+const SIMD_I64X2_EXTEND_HIGH_I32X4_U = 0xca;
+const SIMD_I64X2_SHL = 0xcb;
+const SIMD_I64X2_SHR_S = 0xcc;
+const SIMD_I64X2_SHR_U = 0xcd;
+const SIMD_I64X2_ADD = 0xce;
+const SIMD_I64X2_SUB = 0xd1;
+const SIMD_I64X2_MUL = 0xd5;
+const SIMD_F32X4_CEIL = 0x67;
+const SIMD_F32X4_FLOOR = 0x68;
+const SIMD_F32X4_TRUNC = 0x69;
+const SIMD_F32X4_NEAREST = 0x6a;
+const SIMD_F64X2_CEIL = 0x74;
+const SIMD_F64X2_FLOOR = 0x75;
+const SIMD_F64X2_TRUNC = 0x7a;
+const SIMD_F64X2_NEAREST = 0x94;
+const SIMD_F32X4_ABS = 0xe0;
+const SIMD_F32X4_NEG = 0xe1;
+const SIMD_F32X4_SQRT = 0xe3;
+const SIMD_F32X4_ADD = 0xe4;
+const SIMD_F32X4_SUB = 0xe5;
+const SIMD_F32X4_MUL = 0xe6;
+const SIMD_F32X4_DIV = 0xe7;
+const SIMD_F32X4_MIN = 0xe8;
+const SIMD_F32X4_MAX = 0xe9;
+const SIMD_F32X4_PMIN = 0xea;
+const SIMD_F32X4_PMAX = 0xeb;
+const SIMD_F64X2_ABS = 0xec;
+const SIMD_F64X2_NEG = 0xed;
+const SIMD_F64X2_SQRT = 0xef;
+const SIMD_F64X2_ADD = 0xf0;
+const SIMD_F64X2_SUB = 0xf1;
+const SIMD_F64X2_MUL = 0xf2;
+const SIMD_F64X2_DIV = 0xf3;
+const SIMD_F64X2_MIN = 0xf4;
+const SIMD_F64X2_MAX = 0xf5;
+const SIMD_F64X2_PMIN = 0xf6;
+const SIMD_F64X2_PMAX = 0xf7;
+const SIMD_I32X4_TRUNC_SAT_F32X4_S = 0xf8;
+const SIMD_I32X4_TRUNC_SAT_F32X4_U = 0xf9;
+const SIMD_F32X4_CONVERT_I32X4_S = 0xfa;
+const SIMD_F32X4_CONVERT_I32X4_U = 0xfb;
+const SIMD_V128_LOAD32_ZERO = 0x5c;
+const SIMD_V128_LOAD64_ZERO = 0x5d;
+const SIMD_I16X8_EXTMUL_LOW_I8X16_S = 0x9c;
+const SIMD_I16X8_EXTMUL_HIGH_I8X16_S = 0x9d;
+const SIMD_I16X8_EXTMUL_LOW_I8X16_U = 0x9e;
+const SIMD_I16X8_EXTMUL_HIGH_I8X16_U = 0x9f;
+const SIMD_I32X4_EXTMUL_LOW_I16X8_S = 0xbc;
+const SIMD_I32X4_EXTMUL_HIGH_I16X8_S = 0xbd;
+const SIMD_I32X4_EXTMUL_LOW_I16X8_U = 0xbe;
+const SIMD_I32X4_EXTMUL_HIGH_I16X8_U = 0xbf;
+const SIMD_I64X2_EXTMUL_LOW_I32X4_S = 0xdc;
+const SIMD_I64X2_EXTMUL_HIGH_I32X4_S = 0xdd;
+const SIMD_I64X2_EXTMUL_LOW_I32X4_U = 0xde;
+const SIMD_I64X2_EXTMUL_HIGH_I32X4_U = 0xdf;
+const SIMD_I16X8_Q15MULR_SAT_S = 0x82;
+const SIMD_V128_ANY_TRUE = 0x53;
+const SIMD_V128_LOAD8_LANE = 0x54;
+const SIMD_V128_LOAD16_LANE = 0x55;
+const SIMD_V128_LOAD32_LANE = 0x56;
+const SIMD_V128_LOAD64_LANE = 0x57;
+const SIMD_V128_STORE8_LANE = 0x58;
+const SIMD_V128_STORE16_LANE = 0x59;
+const SIMD_V128_STORE32_LANE = 0x5a;
+const SIMD_V128_STORE64_LANE = 0x5b;
+const SIMD_I64X2_EQ = 0xd6;
+const SIMD_I64X2_NE = 0xd7;
+const SIMD_I64X2_LT_S = 0xd8;
+const SIMD_I64X2_GT_S = 0xd9;
+const SIMD_I64X2_LE_S = 0xda;
+const SIMD_I64X2_GE_S = 0xdb;
+const SIMD_I64X2_ALL_TRUE = 0xc3;
+const SIMD_F64X2_CONVERT_LOW_I32X4_S = 0xfe;
+const SIMD_F64X2_CONVERT_LOW_I32X4_U = 0xff;
+const SIMD_I32X4_TRUNC_SAT_F64X2_S_ZERO = 0xfc;
+const SIMD_I32X4_TRUNC_SAT_F64X2_U_ZERO = 0xfd;
+const SIMD_F32X4_DEMOTE_F64X2_ZERO = 0x5e;
+const SIMD_F64X2_PROMOTE_LOW_F32X4 = 0x5f;
+const SIMD_I8X16_POPCNT = 0x62;
+const SIMD_I16X8_EXTADD_PAIRWISE_I8X16_S = 0x7c;
+const SIMD_I16X8_EXTADD_PAIRWISE_I8X16_U = 0x7d;
+const SIMD_I32X4_EXTADD_PAIRWISE_I16X8_S = 0x7e;
+const SIMD_I32X4_EXTADD_PAIRWISE_I16X8_U = 0x7f;
+
+const ARG_ATOMIC_WAKE             = 0x00;
+const ARG_I32_ATOMIC_WAIT         = 0x01;
+const ARG_I64_ATOMIC_WAIT         = 0x02;
+const ARG_I32_ATOMIC_LOAD         = 0x10;
+const ARG_I64_ATOMIC_LOAD         = 0x11;
+const ARG_I32_ATOMIC_LOAD_8U      = 0x12;
+const ARG_I32_ATOMIC_LOAD_16U     = 0x13;
+const ARG_I64_ATOMIC_LOAD_8U      = 0x14;
+const ARG_I64_ATOMIC_LOAD_16U     = 0x15;
+const ARG_I64_ATOMIC_LOAD_32U     = 0x16;
+const ARG_I32_ATOMIC_STORE        = 0x17;
+const ARG_I64_ATOMIC_STORE        = 0x18;
+const ARG_I32_ATOMIC_STORE_8      = 0x19;
+const ARG_I32_ATOMIC_STORE_16     = 0x1A;
+const ARG_I64_ATOMIC_STORE_8      = 0x1B;
+const ARG_I64_ATOMIC_STORE_16     = 0x1C;
+const ARG_I64_ATOMIC_STORE_32     = 0x1D;
+const ARG_I32_ATOMIC_RMW_ADD      = 0x1E;
+const ARG_I64_ATOMIC_RMW_ADD      = 0x1F;
+const ARG_I32_ATOMIC_RMW_ADD_8U   = 0x20;
+const ARG_I32_ATOMIC_RMW_ADD_16U  = 0x21;
+const ARG_I64_ATOMIC_RMW_ADD_8U   = 0x22;
+const ARG_I64_ATOMIC_RMW_ADD_16U  = 0x23;
+const ARG_I64_ATOMIC_RMW_ADD_32U  = 0x24;
+const ARG_I32_ATOMIC_RMW_SUB      = 0x25;
+const ARG_I64_ATOMIC_RMW_SUB      = 0x26;
+const ARG_I32_ATOMIC_RMW_SUB_8U   = 0x27;
+const ARG_I32_ATOMIC_RMW_SUB_16U  = 0x28;
+const ARG_I64_ATOMIC_RMW_SUB_8U   = 0x29;
+const ARG_I64_ATOMIC_RMW_SUB_16U  = 0x2A;
+const ARG_I64_ATOMIC_RMW_SUB_32U  = 0x2B;
+const ARG_I32_ATOMIC_RMW_AND      = 0x2C;
+const ARG_I64_ATOMIC_RMW_AND      = 0x2D;
+const ARG_I32_ATOMIC_RMW_AND_8U   = 0x2E;
+const ARG_I32_ATOMIC_RMW_AND_16U  = 0x2F;
+const ARG_I64_ATOMIC_RMW_AND_8U   = 0x30;
+const ARG_I64_ATOMIC_RMW_AND_16U  = 0x31;
+const ARG_I64_ATOMIC_RMW_AND_32U  = 0x32;
+const ARG_I32_ATOMIC_RMW_OR       = 0x33;
+const ARG_I64_ATOMIC_RMW_OR       = 0x34;
+const ARG_I32_ATOMIC_RMW_OR_8U    = 0x35;
+const ARG_I32_ATOMIC_RMW_OR_16U   = 0x36;
+const ARG_I64_ATOMIC_RMW_OR_8U    = 0x37;
+const ARG_I64_ATOMIC_RMW_OR_16U   = 0x38;
+const ARG_I64_ATOMIC_RMW_OR_32U   = 0x39;
+const ARG_I32_ATOMIC_RMW_XOR      = 0x3A;
+const ARG_I64_ATOMIC_RMW_XOR      = 0x3B;
+const ARG_I32_ATOMIC_RMW_XOR_8U   = 0x3C;
+const ARG_I32_ATOMIC_RMW_XOR_16U  = 0x3D;
+const ARG_I64_ATOMIC_RMW_XOR_8U   = 0x3E;
+const ARG_I64_ATOMIC_RMW_XOR_16U  = 0x3F;
+const ARG_I64_ATOMIC_RMW_XOR_32U  = 0x40;
+const ARG_I32_ATOMIC_RMW_XCHG     = 0x41;
+const ARG_I64_ATOMIC_RMW_XCHG     = 0x42;
+const ARG_I32_ATOMIC_RMW_XCHG_8U  = 0x43;
+const ARG_I32_ATOMIC_RMW_XCHG_16U = 0x44;
+const ARG_I64_ATOMIC_RMW_XCHG_8U  = 0x45;
+const ARG_I64_ATOMIC_RMW_XCHG_16U = 0x46;
+const ARG_I64_ATOMIC_RMW_XCHG_32U = 0x47;
+const ARG_I32_ATOMIC_RMW_CMPXCHG     = 0x48;
+const ARG_I64_ATOMIC_RMW_CMPXCHG     = 0x49;
+const ARG_I32_ATOMIC_RMW_CMPXCHG_8U  = 0x4A;
+const ARG_I32_ATOMIC_RMW_CMPXCHG_16U = 0x4B;
+const ARG_I64_ATOMIC_RMW_CMPXCHG_8U  = 0x4C;
+const ARG_I64_ATOMIC_RMW_CMPXCHG_16U = 0x4D;
+const ARG_I64_ATOMIC_RMW_CMPXCHG_32U = 0x4E;
+
+const convertOpcode = function(string) {
     const opcodeVal = opcodeStr[string];
+
     if (typeof opcodeVal === "undefined") {
-        throw new Error("Invalid opcode " + string)
+        throw new Error("Invalid opcode "+string);
     }
-    return opcodeVal
+
+    return opcodeVal;
 };
-const convertOpcodeArray = function (opcodeArray) {
+
+const convertOpcodeArray = function(opcodeArray) {
     const result = [];
+
     for (let i = 0; i < opcodeArray.length; i++) {
         const thisElement = opcodeArray[i];
+
         let convertedElement = thisElement;
+
         if (typeof thisElement === "string") {
-            convertedElement = convertOpcode(thisElement)
+            convertedElement = convertOpcode(thisElement);
         }
-        result.push(convertedElement)
+
+        result.push(convertedElement);
     }
-    return result
+
+    return result;
 };
-const Uint8ToArray = function (x) {
-    return [x & 255]
+
+const Uint8ToArray = function(x) {
+    return [(x & 0xff)];
 };
-const Uint32ToArray = function (x) {
-    return [x & 255, (x & 65280) >> 8, (x & 16711680) >> 16, (x & 4278190080) >> 24]
+
+const Uint32ToArray = function(x) {
+    return ([
+        (x & 0x000000ff),
+        (x & 0x0000ff00) >> 8,
+        (x & 0x00ff0000) >> 16,
+        (x & 0xff000000) >> 24,
+    ]);
 };
-const Uint64ToArray = function (x) {
-    return [x & 255, (x & 65280) >> 8, (x & 16711680) >> 16, (x & 4278190080) >> 24, (x & 0xff00000000) >> 32, (x & 0xff0000000000) >> 40, (x & 0xff000000000000) >> 48, (x & 0xff00000000000000) >> 56]
+
+const Uint64ToArray = function(x) {
+    return ([
+        (x & 0x00000000000000ff),
+        (x & 0x000000000000ff00) >> 8,
+        (x & 0x0000000000ff0000) >> 16,
+        (x & 0x00000000ff000000) >> 24,
+        (x & 0x000000ff00000000) >> 32,
+        (x & 0x0000ff0000000000) >> 40,
+        (x & 0x00ff000000000000) >> 48,
+        (x & 0xff00000000000000) >> 56,
+    ]);
 };
-const VarUint32ToArray = function (x) {
+
+const VarUint32ToArray = function(x) {
     const result = [];
     let current = x;
+
     if (x == 0) {
-        return [0]
+        return [0];
     }
+
     while (current > 0) {
-        let thisByte = current & 127;
+        let thisByte = current & 0x7F;
+
         current >>= 7;
+
         if (current) {
-            thisByte |= 128
+            thisByte |= 0x80;
         }
-        result.push(thisByte)
+
+        result.push(thisByte);
     }
-    return result
+
+    return result;
 };
-const VarSint32ToArray = function (x) {
+
+const VarSint32ToArray = function(x) {
     const result = [];
     let current = x;
+
     while (1) {
-        thisByte = current & 127;
+        thisByte = current & 0x7f;
         current >>= 7;
-        if (current == -1 && thisByte & 64) {
+
+        if (current == -1 && (thisByte & 0x40)) {
             result.push(thisByte);
-            break
-        } else if (current == 0 && !(thisByte & 64)) {
+            
+            break;
+        }
+        else if (current == 0 && !(thisByte & 0x40)) {
             result.push(thisByte);
-            break
-        } else {
-            thisByte |= 128;
-            result.push(thisByte)
+            
+            break;
+        }
+        else {
+            thisByte |= 0x80;
+
+            result.push(thisByte);
         }
     }
-    return result
+
+    return result;
+}
+
+// From https://stackoverflow.com/questions/16893817/javascript-ascii-string-to-hex-byte-array
+const stringToByteArray = function(str) {
+    return str.split("").map(function(c) {
+        return c.charCodeAt(0);
+    });
 };
-const stringToByteArray = function (str) {
-    return str.split("").map(function (c) {
-        return c.charCodeAt(0)
-    })
-};
-const VarUint32 = function (value) {
+
+const VarUint32 = function(value) {
     if (typeof value == "number") {
-        return VarUint32ToArray(value)
-    } else if (value instanceof WailVariable) {
-        return value.varUint32()
-    } else {}
+        return VarUint32ToArray(value);
+    }
+    else if (value instanceof WailVariable) {
+        return value.varUint32();
+    }
+    else {
+        // TODO Handle error
+    }
 };
+
+// WailVariable is the base class representing values that will be resolved while parsing.
+// Users can dictate the particular binary representation of a WailVariable by using
+// the type methods (i32(), f32(), etc)
+// If a representation is not explicitly selected, Wail will select a representation
+// contextually if possible, or throw an exception if not
 class WailVariable {
     constructor() {
-        this._value = null
+        this._value = null;
     }
+
     get value() {
         if (this._value === null) {
-            throw new Error("Attempted to resolve WailVariable before set")
+            throw new Error("Attempted to resolve WailVariable before set");
         }
-        return this._value
+
+        return this._value;
     }
+
     set value(newValue) {
-        this._value = newValue
+        this._value = newValue;
     }
+
     i32() {
         if (this._value !== null) {
-            return this.value
+            return this.value;
         }
-        return new WailI32(this)
+
+        return new WailI32(this);
     }
+
     f32() {
         if (this._value !== null) {
             const f32Array = new Float32Array([this._value]);
-            return new Uint8Array(f32Array.buffer)
+
+            return new Uint8Array(f32Array.buffer);
         }
-        return new WailF32(this)
+
+        return new WailF32(this);
     }
+
     i64() {
         if (this._value !== null) {
-            return this.value
+            return this.value;
         }
-        return new WailI64(this)
+
+        return new WailI64(this);
     }
+
     f64() {
         if (this._value !== null) {
             const f64Array = new Float64Array([this._value]);
-            return new Uint8Array(f64Array.buffer)
+
+            return new Uint8Array(f64Array.buffer);
         }
-        return new WailF64(this)
+
+        return new WailF64(this);
     }
+
     varUint32() {
         if (this._value !== null) {
-            return VarUint32(this.value)
+            return VarUint32(this.value);
         }
-        return new WailVarUint32(this)
+
+        return new WailVarUint32(this);
     }
 }
+
 class TypedWailVariable {
     constructor(parentVariable) {
-        this._parent = parentVariable
+        this._parent = parentVariable;
     }
 }
+
 class WailI32 extends TypedWailVariable {
     get value() {
-        return Uint32ToArray(this._parent.value)
+        return Uint32ToArray(this._parent.value);
     }
 }
+
 class WailF32 extends TypedWailVariable {
     get value() {
-        return Uint32ToArray(this._parent.value)
+        // TODO Fix
+        return Uint32ToArray(this._parent.value);
     }
 }
+
 class WailI64 extends TypedWailVariable {
     get value() {
-        return Uint64ToArray(this._parent.value)
+        return Uint64ToArray(this._parent.value);
     }
 }
+
 class WailF64 extends TypedWailVariable {
     get value() {
-        return Uint64ToArray(this._parent.value)
+        // TODO Fix
+        return Uint64ToArray(this._parent.value);
     }
 }
+
 class WailVarUint32 extends TypedWailVariable {
     get value() {
-        return VarUint32ToArray(this._parent.value)
+        return VarUint32ToArray(this._parent.value);
     }
 }
+
 const BufferReader = class {
     constructor(buffer) {
         this.inBuffer = null;
         this.outBuffer = null;
+
         if (typeof buffer !== "undefined") {
-            this.inBuffer = new Uint8Array(buffer);
-            this.outBuffer = new Uint8Array(buffer.length * 2)
-        } else {
-            this.outBuffer = new Uint8Array(1)
+            this.inBuffer  = new Uint8Array(buffer);
+
+            // Allocate an ArrayBuffer larger than original ArrayBuffer
+            // We'll create a larger array later if necessary
+            this.outBuffer = new Uint8Array(buffer.length * 2);
         }
-        this.inPos = 0;
-        this._copyPos = 0;
-        this.outPos = 0;
-        this._anchor = null
+        else {
+            this.outBuffer = new Uint8Array(1);
+        }
+
+        this.inPos      = 0;
+        this._copyPos    = 0;
+        this.outPos     = 0;
+
+        this._anchor = null;
     }
+
     load(buffer) {
         this.inBuffer = new Uint8Array(buffer);
-        this.outBuffer = new Uint8Array(this.inBuffer.length * 2)
+
+        this.outBuffer = new Uint8Array(this.inBuffer.length * 2);
     }
+
     resize() {
         const newBuffer = new Uint8Array(Math.ceil(8 + this.outBuffer.length * 1.25));
+
         for (let i = 0; i < this.outPos; i++) {
-            newBuffer[i] = this.outBuffer[i]
+            newBuffer[i] = this.outBuffer[i];
         }
-        this.outBuffer = newBuffer
+
+        this.outBuffer = newBuffer;
     }
+
     readUint8() {
-        return this.inBuffer[this.inPos++]
+        return this.inBuffer[this.inPos++];
     }
+
     readUint32() {
         const b1 = this.inBuffer[this.inPos++];
         const b2 = this.inBuffer[this.inPos++];
         const b3 = this.inBuffer[this.inPos++];
         const b4 = this.inBuffer[this.inPos++];
-        return b1 | b2 << 8 | b3 << 16 | b4 << 24
+
+        return (b1 | (b2 << 8) | (b3 << 16) | (b4 << 24));
     }
+
     readVarUint32() {
-        let result = 0;
-        let shift = 0;
+        let result  = 0;
+        let shift   = 0;
+
         let currentByte;
+
         do {
             currentByte = this.readUint8();
-            result |= (currentByte & 127) << shift;
-            shift += 7
-        } while (currentByte & 128);
-        return result
+            result |= (currentByte & 0x7F) << shift;
+            shift += 7;
+        } while (currentByte & 0x80);
+
+        return result;
     }
+
     readUint64() {
         const b1 = this.inBuffer[this.inPos++];
         const b2 = this.inBuffer[this.inPos++];
@@ -777,8 +908,18 @@ const BufferReader = class {
         const b6 = this.inBuffer[this.inPos++];
         const b7 = this.inBuffer[this.inPos++];
         const b8 = this.inBuffer[this.inPos++];
-        return b1 | b2 << 8 | b3 << 16 | b4 << 24 | b5 << 32 | b6 << 40 | b7 << 48 | b8 << 56
+
+        return (b1          |
+                (b2 << 8)   |
+                (b3 << 16)  |
+                (b4 << 24)  |
+                (b5 << 32)  |
+                (b6 << 40)  |
+                (b7 << 48)  |
+                (b8 << 56)
+        );
     }
+
     readUint128() {
         const b1 = this.inBuffer[this.inPos++];
         const b2 = this.inBuffer[this.inPos++];
@@ -796,661 +937,1046 @@ const BufferReader = class {
         const b14 = this.inBuffer[this.inPos++];
         const b15 = this.inBuffer[this.inPos++];
         const b16 = this.inBuffer[this.inPos++];
-        return b1 | b2 << 8 | b3 << 16 | b4 << 24 | b5 << 32 | b6 << 40 | b7 << 48 | b8 << 56 | b9 << 64 | b10 << 72 | b11 << 80 | b12 << 88 | b13 << 96 | b14 << 104 | b15 << 112 | b16 << 120
+
+        return (b1           |
+                (b2 << 8)    |
+                (b3 << 16)   |
+                (b4 << 24)   |
+                (b5 << 32)   |
+                (b6 << 40)   |
+                (b7 << 48)   |
+                (b8 << 56)   |
+                (b9 << 64)   |
+                (b10 << 72)  |
+                (b11 << 80)  |
+                (b12 << 88)  |
+                (b13 << 96)  |
+                (b14 << 104) |
+                (b15 << 112) |
+                (b16 << 120)
+        );
     }
+
     readBytes(length) {
         const result = new Uint8Array(length);
+
         for (let i = 0; i < length; i++) {
-            result[i] = this.inBuffer[this.inPos++]
+            result[i] = this.inBuffer[this.inPos++];
         }
-        return result
+
+        return result;
     }
+
     copyBuffer(buffer) {
         while (buffer.length + this.outPos > this.outBuffer.length) {
-            this.resize()
+            this.resize();
         }
+
         for (let i = 0; i < buffer.length; i++, this.outPos++) {
-            this.outBuffer[this.outPos] = buffer[i]
+            this.outBuffer[this.outPos] = buffer[i];
         }
-        this.updateCopyPosition()
+
+        this.updateCopyPosition();
     }
+
     commitBytes() {
-        while (this.inPos - this._copyPos + this.outPos > this.outBuffer.length) {
-            this.resize()
+        while ((this.inPos - this._copyPos) + this.outPos > this.outBuffer.length) {
+            this.resize();
         }
-        for (; this._copyPos < this.inPos; this._copyPos++, this.outPos++) {
-            this.outBuffer[this.outPos] = this.inBuffer[this._copyPos]
+
+        for ( ; this._copyPos < this.inPos; this._copyPos++, this.outPos++) {
+            this.outBuffer[this.outPos] = this.inBuffer[this._copyPos];
         }
     }
+
     updateCopyPosition() {
-        this._copyPos = this.inPos
+        this._copyPos = this.inPos;
     }
+
     setAnchor() {
-        this._anchor = this.outPos
+        this._anchor = this.outPos;
     }
+
     readFromAnchor() {
-        return this.outBuffer.slice(this._anchor, this.outPos)
+        return this.outBuffer.slice(this._anchor, this.outPos);
     }
+
     writeAtAnchor(buffer) {
         while (buffer.length + this.outPos > this.outBuffer.length) {
-            this.resize()
+            this.resize();
         }
+
         for (let i = 0; i < buffer.length; i++) {
-            this.outBuffer[this._anchor + i] = buffer[i]
+            this.outBuffer[this._anchor + i] = buffer[i];
         }
-        this.outPos = this._anchor + buffer.length
+
+        this.outPos = this._anchor + buffer.length;
     }
+
     write() {
-        return this.outBuffer.slice(0, this.outPos)
+        return this.outBuffer.slice(0, this.outPos);
     }
 };
+
 class WailParser extends BufferReader {
     constructor(bufferSource) {
         super(bufferSource);
+
         this._finished = false;
+
         this._newSections = [];
+
         this._removeSectionIds = [];
+
         this._resolvedTables = false;
+
+        // We need to keep track of how many imported functions there are to
+        // properly rebuild function table
         this._importFuncCount = 0;
-        this._importFuncNewCount = 0;
+        this._importFuncNewCount  = 0;
+
+        // Same logic as with imported functions
         this._importGlobalCount = 0;
         this._importGlobalNewCount = 0;
+
         this._globalImportCallback = null;
         this._importCallbacks = [];
+
         this._globalExportCallback = null;
         this._exportCallbacks = [];
+
         this._globalFunctionCallback = null;
         this._functionCallbacks = [];
+
         this._globalInstructionCallback = null;
         this._instructionCallbacks = {};
+
         this._sectionOptions = {};
+
+        // Each section has three sets of parameters that can be set before parsing begins
+        //      "newEntries" includes newly created section entries
+        //      "existingExtries" includes parameters used to modify existing entries
+        //      "pending" includes variables that require info from this section to resolve
         for (let i = 0; i <= MAX_SECTION_ID; i++) {
             this._sectionOptions[i] = {
                 newEntries: [],
                 existingEntries: [],
-                pending: []
-            }
+                pending: [],
+            };
         }
+
+        // To keep parsing as minimal as possible, we keep two masks of sections the user
+        // has requested we parse
+        //
+        // The first defines sections that the binary must have. If the binary does not already
+        // have this section, we will add it
+        //
+        // The second defines sections that should be parsed if they exist. There is no reason
+        // to add these new sections if they do not exist
         this._requiredSectionFlags = 0;
         this._optionalSectionFlags = 0;
+
         this._parsedSections = 0;
-        this.__variables = []
+
+        this.__variables = [];
     }
+
     parse() {
-        const magic = this.readUint32();
+        const magic   = this.readUint32();
         const version = this.readUint32();
-        if (magic != 1836278016) {
-            throw new Error("Invalid magic. Probably not a WebAssembly binary")
+
+        if (magic != 0x6d736100) {
+            throw new Error("Invalid magic. Probably not a WebAssembly binary");
         }
+
+        // TODO How do we make this less stupid?
         while (this.inPos < this.inBuffer.length) {
-            this._readSection()
+            this._readSection();
         }
+
         this.commitBytes();
-        this._finished = true
+
+        this._finished = true;
     }
+
+    // TODO Support removing sections by name
     removeSection(id) {
         if (typeof id === "number") {
-            this._removeSectionIds.push(id)
-        } else {
-            throw new Error("Invalid argument to removeSection()")
+            this._removeSectionIds.push(id);
+        }
+        else {
+            throw new Error("Invalid argument to removeSection()");
         }
     }
+
     addTypeEntry(options) {
         const newEntry = {};
+
         const form = options.form;
+
         if (typeof form === "number") {
-            newEntry.form = form
-        } else {
-            newEntry.form = convertValueType(form)
+            newEntry.form = form;
         }
+        else {
+            newEntry.form = convertValueType(form);
+        }
+
         const params = options.params;
+
         if (params instanceof Array) {
             const convertedParams = [];
+
             for (let i = 0; i < params.length; i++) {
                 const thisParam = params[i];
+
                 if (typeof thisParam === "number") {
-                    convertedParams.push(thisParam)
-                } else {
-                    convertedParams.push(convertValueType(thisParam))
+                    convertedParams.push(thisParam);
+                }
+                else {
+                    convertedParams.push(convertValueType(thisParam));
                 }
             }
-            newEntry.params = convertedParams
-        } else {
-            newEntry.params = []
+
+            newEntry.params = convertedParams;
         }
+        else {
+            newEntry.params = [];
+        }
+
         const returnType = options.returnType;
+
         if (typeof returnType === "number") {
-            newEntry.returnType = returnType
-        } else if (typeof returnType === "string") {
-            newEntry.returnType = convertValueType(returnType)
+            newEntry.returnType = returnType;
         }
+        else if (typeof returnType === "string") {
+            newEntry.returnType = convertValueType(returnType);
+        }
+
         const newVariable = this._createVariable();
+
         newEntry.variable = newVariable;
+
         this._sectionOptions[SECTION_TYPE].newEntries.push(newEntry);
+
         this._requiredSectionFlags |= 1 << SECTION_TYPE;
-        return newVariable
+
+        return newVariable;
     }
+
     editTypeEntry(index, options) {
         const savedEntry = {};
+
+        // As is, editTypeEntry() has no purpose to receive WailVariables
+        // So unlike some other edit functions, it only accepts numeric indices
         if (typeof index !== "number") {
-            throw new Error("Invalid index in editTypeEntry()")
+            throw new Error("Invalid index in editTypeEntry()");
         }
+
         savedEntry.index = index;
+
         const params = options.params;
+
         if (params instanceof Array) {
-            savedEntry.params = params
-        } else {
-            savedEntry.params = []
+            savedEntry.params = params;
         }
+        else {
+            savedEntry.params = [];
+        }
+
         const returnType = options.returnType;
+
         if (returnType) {
-            savedEntry.returnType = returnType
+            savedEntry.returnType = returnType;
         }
+
         this._sectionOptions[SECTION_TYPE].existingEntries.push(savedEntry);
-        this._optionalSectionFlags |= 1 << SECTION_TYPE
+
+        this._optionalSectionFlags |= 1 << SECTION_TYPE;
     }
+
     addImportEntry(options) {
         const newEntry = {};
+
         const moduleStr = options.moduleStr;
+
         if (typeof moduleStr == "string" || moduleStr instanceof String) {
-            newEntry.moduleStr = moduleStr
-        } else {
-            throw new Error("Invalid moduleStr")
+            newEntry.moduleStr = moduleStr;
         }
+        else {
+            throw new Error("Invalid moduleStr");
+        }
+
         const fieldStr = options.fieldStr;
+
         if (typeof fieldStr == "string" || fieldStr instanceof String) {
-            newEntry.fieldStr = fieldStr
-        } else {
-            throw new Error("Invalid fieldStr")
+            newEntry.fieldStr = fieldStr;
         }
+        else {
+            throw new Error("Invalid fieldStr");
+        }
+
         const kind = options.kind;
+
         let convertedKind;
+
         if (typeof kind === "number") {
-            convertedKind = kind
-        } else {
-            convertedKind = convertKind(kind)
+            convertedKind = kind;
         }
+        else {
+            convertedKind = convertKind(kind);
+        }
+
         let type = options.type;
+
         newEntry.kind = convertedKind;
+
         switch (convertedKind) {
             case KIND_FUNC:
                 this._importFuncNewCount++;
+
                 if (typeof type === "number") {
-                    newEntry.type = type
-                } else if (type instanceof WailVarUint32) {
-                    newEntry.type = type
-                } else if (type instanceof WailVariable) {
-                    newEntry.type = type.varUint32()
-                } else {
-                    throw new Error("Invalid type")
+                    newEntry.type = type;
                 }
+                else if (type instanceof WailVarUint32) {
+                    newEntry.type = type;
+                }
+                else if (type instanceof WailVariable) {
+                    newEntry.type = type.varUint32();
+                }
+                else {
+                    throw new Error("Invalid type");
+                }
+
                 break;
             case KIND_GLOBAL:
                 this._importGlobalNewCount++;
+
                 if (typeof type === "number") {
-                    newEntry.type = type
-                } else {
-                    throw new Error("Invalid type")
+                    newEntry.type = type;
                 }
-                if (options.mutability === 0 || options.mutability === 1 || options.mutability === true || options.mutability === false) {
-                    newEntry.mutability = options.mutability
-                } else {
-                    throw new Error("Invalid mutability")
+                else {
+                    throw new Error("Invalid type");
                 }
+
+                // Mutable imported globals is not supported by all browsers, but
+                // we allow it regardless.
+                if (options.mutability === 0 || options.mutability === 1 ||
+                    options.mutability === true || options.mutability === false) {
+                    newEntry.mutability = options.mutability;
+                }
+                else {
+                    throw new Error("Invalid mutability");
+                }
+
                 break;
             case KIND_MEMORY:
-                newEntry.type = 1;
-                break;
+                throw new Error("Adding new memory object not currently supported");
             case KIND_TABLE:
                 throw new Error("Adding new table object not currently supported");
             default:
-                throw new Error("Invalid kind")
+                throw new Error("Invalid kind");
         }
+
         const newVariable = this._createVariable();
+
         newEntry.variable = newVariable;
+
         this._sectionOptions[SECTION_IMPORT].newEntries.push(newEntry);
+
         this._requiredSectionFlags |= 1 << SECTION_IMPORT;
+
+        // Adding functions to the import section changes the function table.
+        // This means we need to patch up any other section that contains function indexes
         if (this._importFuncNewCount > 0) {
             this._optionalSectionFlags |= 1 << SECTION_EXPORT;
             this._optionalSectionFlags |= 1 << SECTION_ELEMENT;
             this._optionalSectionFlags |= 1 << SECTION_CODE;
-            this._optionalSectionFlags |= 1 << SECTION_START
+            this._optionalSectionFlags |= 1 << SECTION_START;
         }
+
+        // Same logic as above. If we add an imported global, we need to parse
+        // any potentially affected sections.
         if (this._importGlobalNewCount > 0) {
             this._optionalSectionFlags |= 1 << SECTION_EXPORT;
-            this._optionalSectionFlags |= 1 << SECTION_CODE
+            this._optionalSectionFlags |= 1 << SECTION_CODE;
         }
-        return newVariable
+
+        return newVariable;
     }
+
+    // TODO WAIL does not currently support modifying the "kind" of an existing import
+    // Is there any realistic reason to do so?
     editImportEntry(index, options) {
         const savedEntry = {};
+
         savedEntry.index = index;
+
         if (typeof index !== "number" && !(index instanceof WailVariable)) {
-            throw new Error("Invalid index in editImportEntry()")
+            throw new Error("Invalid index in editImportEntry()");
         }
+
         const moduleStr = options.moduleStr;
+
         if (typeof moduleStr == "string" || moduleStr instanceof String) {
-            savedEntry.moduleStr = stringToByteArray(moduleStr)
+            savedEntry.moduleStr = stringToByteArray(moduleStr);
         }
+
         const fieldStr = options.fieldStr;
+
         if (typeof fieldStr == "string" || fieldStr instanceof String) {
-            savedEntry.fieldStr = stringToByteArray(fieldStr)
+            savedEntry.fieldStr = stringToByteArray(fieldStr);
         }
+
         this._sectionOptions[SECTION_IMPORT].existingEntries.push(savedEntry);
-        this._optionalSectionFlags |= 1 << SECTION_IMPORT
+
+        this._optionalSectionFlags |= 1 << SECTION_IMPORT;
     }
+
     addImportElementParser(index, callback) {
         if (typeof callback !== "function") {
-            throw new Error("Bad callback in addImportElementParser()")
+            throw new Error("Bad callback in addImportElementParser()");
         }
+
         if (index === null) {
-            this._globalImportCallback = callback
-        } else if (typeof index !== "number" && !(index instanceof WailVariable)) {
-            throw new Error("Bad id " + index + " in addImportElementParser()")
-        } else {
+            this._globalImportCallback = callback;
+        }
+        else if (typeof index !== "number" && !(index instanceof WailVariable)) {
+            throw new Error("Bad id "+index+" in addImportElementParser()");
+        }
+        else {
             const callbackObj = {};
             callbackObj.index = index;
             callbackObj.callback = callback;
-            this._importCallbacks.push(callbackObj)
+
+            this._importCallbacks.push(callbackObj);
         }
-        this._optionalSectionFlags |= 1 << SECTION_IMPORT
+
+        this._optionalSectionFlags |= 1 << SECTION_IMPORT;
     }
+
     addFunctionEntry(options) {
         const newEntry = {};
+
         const type = options.type;
+
         if (typeof type === "number") {
-            newEntry.type = type
-        } else if (type instanceof WailVarUint32) {
-            newEntry.type = type
-        } else if (type instanceof WailVariable) {
-            newEntry.type = type.varUint32()
-        } else {
-            throw new Error("Invalid type")
+            newEntry.type = type;
         }
+        else if (type instanceof WailVarUint32) {
+            newEntry.type = type;
+        }
+        else if (type instanceof WailVariable) {
+            newEntry.type = type.varUint32();
+        }
+        else {
+            throw new Error("Invalid type");
+        }
+
         const newVariable = this._createVariable();
+
         newEntry.variable = newVariable;
-        this._sectionOptions[SECTION_FUNCTION].newEntries.push(newEntry);
+
+        this._sectionOptions[SECTION_FUNCTION].newEntries.push(newEntry); 
         this._requiredSectionFlags |= 1 << SECTION_FUNCTION;
-        return newVariable
+
+        return newVariable;
     }
+
     editFunctionEntry(index, options) {
         const savedEntry = {};
+
         savedEntry.index = index;
+
         if (typeof index !== "number" && !(index instanceof WailVariable)) {
-            throw new Error("Invalid index in editFunctionEntry()")
+            throw new Error("Invalid index in editFunctionEntry()");
         }
+
         const givenType = options.type;
+
         if (typeof givenType !== "number") {
-            throw new Error("Invalid type in editFunctionEntry()")
+            throw new Error("Invalid type in editFunctionEntry()");
         }
+
         savedEntry.type = givenType;
+
         this._sectionOptions[SECTION_FUNCTION].existingEntries.push(savedEntry);
-        this._optionalSectionFlags |= 1 << SECTION_FUNCTION
+
+        this._optionalSectionFlags |= 1 << SECTION_FUNCTION;
     }
+
     getFunctionIndex(oldIndex) {
         if (this._finished) {
             if (oldIndex instanceof WailVariable) {
-                return oldIndex
-            } else {
+                return oldIndex;
+            }
+            else {
                 const newVariable = this._createVariable();
+
                 newVariable.value = this._getAdjustedFunctionIndex(oldIndex);
-                return newVariable
+
+                return newVariable;
             }
         }
+
         const newVariable = this._createVariable();
+
         if (typeof oldIndex !== "number") {
-            throw new Error("Invalid index in getFunctionIndex()")
+            throw new Error("Invalid index in getFunctionIndex()");
         }
+
         const pendingOptions = {
             oldIndex: oldIndex,
             variable: newVariable
         };
+
         this._sectionOptions[SECTION_FUNCTION].pending.push(pendingOptions);
+
+        // Resolving function indexes can be done by only parsing the IMPORT section
+        // since newly added FUNCTION entries will be added to the end of the list
         this._optionalSectionFlags |= 1 << SECTION_IMPORT;
-        return newVariable
+
+        return newVariable;
     }
+
     addGlobalEntry(options) {
         const newEntry = {};
+
         newEntry.globalType = {};
+
         if (typeof options.globalType === "undefined") {
-            throw new Error("Invalid globalType")
+            throw new Error("Invalid globalType");
         }
+
         if (typeof options.globalType.contentType === "number") {
-            newEntry.globalType.contentType = options.globalType.contentType
-        } else {
-            newEntry.globalType.contentType = convertValueType(options.globalType.contentType)
+            newEntry.globalType.contentType = options.globalType.contentType;
         }
+        else {
+            newEntry.globalType.contentType = convertValueType(options.globalType.contentType);
+        }
+
         const mutability = options.globalType.mutability;
+
         if (mutability == true) {
-            newEntry.globalType.mutability = 1
-        } else if (mutability == false) {
-            newEntry.globalType.mutability = 0
-        } else {
-            throw new Error("Invalid mutability")
+            newEntry.globalType.mutability = 1;
         }
+        else if (mutability == false) {
+            newEntry.globalType.mutability = 0;
+        }
+        else {
+            throw new Error("Invalid mutability");
+        }
+
         if (options.initExpr instanceof Array) {
-            newEntry.initExpr = convertOpcodeArray(options.initExpr)
-        } else {
-            newEntry.initExpr = [OP_I32_CONST, VarUint32(0), OP_END]
+            newEntry.initExpr = convertOpcodeArray(options.initExpr);
         }
+        else {
+            // Default to initExpr value of "i32.const 0" if not specified
+            newEntry.initExpr = [ OP_I32_CONST, VarUint32(0x00), OP_END ];
+        }
+
         const newVariable = this._createVariable();
+
         newEntry.variable = newVariable;
+
         this._sectionOptions[SECTION_GLOBAL].newEntries.push(newEntry);
+
         this._requiredSectionFlags |= 1 << SECTION_GLOBAL;
-        return newVariable
+
+        return newVariable;
     }
+
+    // TODO Handle editing initExpr
     editGlobalEntry(globalIndex, options) {
         const savedEntry = {};
+
         if (typeof globalIndex === "number") {
-            console.warn("Using raw indexes in editGlobalEntry() can have unpredictable " + "results. Consider using getGlobalIndex() instead")
-        } else if (!(globalIndex instanceof WailVariable)) {
-            throw new Error("Invalid globalIndex in addCodeEntry()")
+            console.warn("Using raw indexes in editGlobalEntry() can have unpredictable "+
+                         "results. Consider using getGlobalIndex() instead");
         }
+        else if (!(globalIndex instanceof WailVariable)) {
+            throw new Error("Invalid globalIndex in addCodeEntry()");
+        }
+
         savedEntry.index = globalIndex;
+
         savedEntry.globalType = {};
+
         if (typeof options.globalType === "undefined") {
-            throw new Error("Invalid globalType")
+            throw new Error("Invalid globalType");
         }
+
         if (typeof options.globalType.contentType === "number") {
-            savedEntry.globalType.contentType = options.globalType.contentType
-        } else {
-            savedEntry.globalType.contentType = convertValueType(options.globalType.contentType)
+            savedEntry.globalType.contentType = options.globalType.contentType;
         }
+        else {
+            savedEntry.globalType.contentType = convertValueType(options.globalType.contentType);
+        }
+
         const mutability = options.globalType.mutability;
+
         if (mutability == true) {
-            savedEntry.globalType.mutability = 1
-        } else if (mutability == false) {
-            savedEntry.globalType.mutability = 0
-        } else {
-            throw new Error("Invalid mutability")
+            savedEntry.globalType.mutability = 1;
         }
+        else if (mutability == false) {
+            savedEntry.globalType.mutability = 0;
+        }
+        else {
+            throw new Error("Invalid mutability");
+        }
+
         this._sectionOptions[SECTION_GLOBAL].existingEntries.push(savedEntry);
-        this._requiredSectionFlags |= 1 << SECTION_GLOBAL
+
+        this._requiredSectionFlags |= 1 << SECTION_GLOBAL;
     }
+
     getGlobalIndex(oldIndex) {
         if (this._finished) {
             if (oldIndex instanceof WailVariable) {
-                return oldIndex.value
-            } else {
-                return this._getAdjustedGlobalIndex(oldIndex)
+                return oldIndex.value;
+            }
+            else {
+                return this._getAdjustedGlobalIndex(oldIndex);
             }
         }
+
         const newVariable = this._createVariable();
+
         if (typeof oldIndex !== "number") {
-            throw new Error("Invalid index in getGlobalIndex()")
+            throw new Error("Invalid index in getGlobalIndex()");
         }
+
         const pendingOptions = {
             oldIndex: oldIndex,
             variable: newVariable
         };
+
         this._sectionOptions[SECTION_GLOBAL].pending.push(pendingOptions);
+
+        // Resolving function indexes can be done by only parsing the IMPORT section
+        // since newly added GLOBAL entries will be added to the end of the list
         this._optionalSectionFlags |= 1 << SECTION_IMPORT;
-        return newVariable
+
+        return newVariable;
     }
+
     addExportEntry(index, options) {
         const newEntry = {};
+
         if (typeof options.fieldStr == "string" || options.fieldStr instanceof String) {
-            newEntry.fieldStr = options.fieldStr
-        } else {
-            throw new Error("Invalid fieldStr")
+            newEntry.fieldStr = options.fieldStr;
         }
+        else {
+            throw new Error("Invalid fieldStr");
+        }
+
         if (typeof options.kind == "number") {
-            newEntry.kind = options.kind
-        } else {
-            newEntry.kind = convertKind(options.kind)
+            newEntry.kind = options.kind;
         }
+        else {
+            newEntry.kind = convertKind(options.kind);
+        }
+
         if (typeof index === "number") {
-            newEntry.index = index
-        } else if (index instanceof WailVarUint32) {
-            newEntry.index = index
-        } else if (index instanceof WailVariable) {
-            newEntry.index = index.varUint32()
-        } else {
-            throw new Error("Invalid type")
+            newEntry.index = index;
         }
+        else if (index instanceof WailVarUint32) {
+            newEntry.index = index;
+        }
+        else if (index instanceof WailVariable) {
+            newEntry.index = index.varUint32();
+        }
+        else {
+            throw new Error("Invalid type");
+        }
+
         const newVariable = this._createVariable();
+
         newEntry.variable = newVariable;
+
         this._sectionOptions[SECTION_EXPORT].newEntries.push(newEntry);
+
         this._requiredSectionFlags |= 1 << SECTION_EXPORT;
-        return newVariable
+
+        return newVariable;
     }
+
     editExportEntry(index, options) {
         const savedEntry = {};
+
         savedEntry.index = index;
+
         if (typeof index !== "number" && !(index instanceof WailVariable)) {
-            throw new Error("Invalid index in editExportEntry()")
+            throw new Error("Invalid index in editExportEntry()");
         }
+
         const fieldStr = options.fieldStr;
+
         if (typeof fieldStr == "string" || fieldStr instanceof String) {
-            savedEntry.fieldStr = stringToByteArray(fieldStr)
+            savedEntry.fieldStr = stringToByteArray(fieldStr);
         }
+
+        // TODO Validate
         savedEntry.kind = options.kind;
         savedEntry.funcIndex = options.index;
+
         this._sectionOptions[SECTION_EXPORT].existingEntries.push(savedEntry);
-        this._optionalSectionFlags |= 1 << SECTION_EXPORT
+
+        this._optionalSectionFlags |= 1 << SECTION_EXPORT;
     }
+
     addExportElementParser(index, callback) {
         if (typeof callback !== "function") {
-            throw new Error("Bad callback in addExportElementParser()")
+            throw new Error("Bad callback in addExportElementParser()");
         }
+
         if (index === null) {
-            this._globalExportCallback = callback
-        } else if (typeof index !== "number" && !(index instanceof WailVariable)) {
-            throw new Error("Bad id " + index + " in addExportElementParser()")
-        } else {
+            this._globalExportCallback = callback;
+        }
+        else if (typeof index !== "number" && !(index instanceof WailVariable)) {
+            throw new Error("Bad id "+index+" in addExportElementParser()");
+        }
+        else {
             const callbackObj = {};
             callbackObj.index = index;
             callbackObj.callback = callback;
-            this._exportCallbacks.push(callbackObj)
+
+            this._exportCallbacks.push(callbackObj);
         }
-        this._optionalSectionFlags |= 1 << SECTION_EXPORT
+
+        this._optionalSectionFlags |= 1 << SECTION_EXPORT;
     }
+
+    // There is no addStartEntry since the start section can only have one element
     editStartEntry(newIndex) {
         if (typeof newIndex !== "number" && !(newIndex instanceof WailVariable)) {
-            throw new Error("Invalid index in editStartEntry()")
+            throw new Error("Invalid index in editStartEntry()");
         }
+
         this._sectionOptions[SECTION_START].existingEntries.push(newIndex);
-        this._requiredSectionFlags |= 1 << SECTION_START
+
+        // Unlike other edit functions, editing the START entry should add the
+        // section if it doesn't exist
+        this._requiredSectionFlags |= 1 << SECTION_START;
     }
+
+    // TODO Validate
     addElementEntry(options) {
         const newVariable = this._createVariable();
+
         options.variable = newVariable;
+
         this._sectionOptions[SECTION_ELEMENT].newEntries.push(options);
+
         this._requiredSectionFlags |= 1 << SECTION_ELEMENT;
-        return newVariable
+
+        return newVariable;
     }
+
     editElementEntry(index, options) {
         const savedEntry = {};
+
         savedEntry.index = index;
+
         if (typeof index !== "number" && !(index instanceof WailVariable)) {
-            throw new Error("Invalid index in editElementEntry()")
+            throw new Error("Invalid index in editElementEntry()");
         }
+
         savedEntry.elems = [];
+
         this._sectionOptions[SECTION_ELEMENT].existingEntries.push(savedEntry);
-        this._optionalSectionFlags |= 1 << SECTION_ELEMENT
+
+        this._optionalSectionFlags |= 1 << SECTION_ELEMENT;
     }
+
     addCodeEntry(funcIndex, options) {
         const newEntry = {};
+
         if (typeof funcIndex === "number") {
-            console.warn("Using raw indexes in addCodeEntry() can have unpredictable " + "results. Consider using getFunctionIndex() instead")
-        } else if (!(funcIndex instanceof WailVariable)) {
-            throw new Error("Invalid funcIndex in addCodeEntry()")
+            console.warn("Using raw indexes in addCodeEntry() can have unpredictable "+
+                         "results. Consider using getFunctionIndex() instead");
         }
+        else if (!(funcIndex instanceof WailVariable)) {
+            throw new Error("Invalid funcIndex in addCodeEntry()");
+        }
+
         newEntry.index = funcIndex;
+
         const locals = options.locals;
+
         if (locals instanceof Array) {
             const fixedLocals = [];
+
             for (let i = 0; i < locals.length; i++) {
                 const thisLocal = locals[i];
+
                 if (typeof thisLocal === "number") {
-                    fixedLocals.push(thisLocal)
-                } else if (typeof thisLocal === "string") {
-                    fixedLocals.push(convertValueType(thisLocal))
-                } else {
-                    throw new Error("Invalid local entry in addCodeEntry()")
+                    fixedLocals.push(thisLocal);
+                }
+                else if (typeof thisLocal === "string") {
+                    fixedLocals.push(convertValueType(thisLocal));
+                }
+                else {
+                    throw new Error("Invalid local entry in addCodeEntry()");
                 }
             }
-            newEntry.locals = fixedLocals
-        } else {
-            newEntry.locals = []
+
+            newEntry.locals = fixedLocals;
         }
+        else {
+            newEntry.locals = [];
+        }
+
         const code = options.code;
+
         if (code instanceof Array) {
-            newEntry.code = convertOpcodeArray(code)
-        } else {
-            throw new Error("Invalid code")
+            newEntry.code = convertOpcodeArray(code);
         }
+        else {
+            throw new Error("Invalid code");
+        }
+
         const newVariable = this._createVariable();
+
         newEntry.variable = newVariable;
+
         this._sectionOptions[SECTION_CODE].newEntries.push(newEntry);
+
         this._requiredSectionFlags |= 1 << SECTION_CODE;
-        return newVariable
+
+        return newVariable;
     }
+
     editCodeEntry(funcIndex, options) {
         const savedEntry = {};
+
         if (typeof funcIndex === "number") {
-            console.warn("Using raw indexes in editCodeEntry() can have unpredictable " + "results. Consider using getFunctionIndex() instead")
-        } else if (!(funcIndex instanceof WailVariable)) {
-            throw new Error("Invalid funcIndex in addCodeEntry()")
+            console.warn("Using raw indexes in editCodeEntry() can have unpredictable "+
+                         "results. Consider using getFunctionIndex() instead");
         }
+        else if (!(funcIndex instanceof WailVariable)) {
+            throw new Error("Invalid funcIndex in addCodeEntry()");
+        }
+
         savedEntry.index = funcIndex;
+
         const locals = options.locals;
+
         if (locals instanceof Array) {
             const fixedLocals = [];
+
             for (let i = 0; i < locals.length; i++) {
                 const thisLocal = locals[i];
+
                 if (typeof thisLocal === "number") {
-                    fixedLocals.push(thisLocal)
-                } else if (typeof thisLocal === "string") {
-                    fixedLocals.push(convertValueType(thisLocal))
-                } else {
-                    throw new Error("Invalid local entry in addCodeEntry()")
+                    fixedLocals.push(thisLocal);
+                }
+                else if (typeof thisLocal === "string") {
+                    fixedLocals.push(convertValueType(thisLocal));
+                }
+                else {
+                    throw new Error("Invalid local entry in addCodeEntry()");
                 }
             }
-            savedEntry.locals = fixedLocals
-        } else {
-            savedEntry.locals = []
+
+            savedEntry.locals = fixedLocals;
         }
+        else {
+            savedEntry.locals = [];
+        }
+
         const code = options.code;
+
         if (code instanceof Array) {
-            savedEntry.code = convertOpcodeArray(code)
-        } else {
-            throw new Error("Invalid code")
+            savedEntry.code = convertOpcodeArray(code);
         }
+        else {
+            throw new Error("Invalid code");
+        }
+
         this._sectionOptions[SECTION_CODE].existingEntries.push(savedEntry);
+
         this._optionalSectionFlags |= 1 << SECTION_IMPORT;
-        this._optionalSectionFlags |= 1 << SECTION_CODE
+        this._optionalSectionFlags |= 1 << SECTION_CODE;
     }
+
+    // TODO Validate
     addDataEntry(options) {
         const newVariable = this._createVariable();
+
         options.variable = newVariable;
+
         this._sectionOptions[SECTION_DATA].newEntries.push(options);
+
         this._requiredSectionFlags |= 1 << SECTION_DATA;
-        return newVariable
+
+        return newVariable;
     }
+
+    // TODO Validate
     editDataEntry(index, options) {
         const savedEntry = {};
+
         if (typeof index !== "number") {
-            throw new Error("Invalid index in editTypeEntry()")
+            throw new Error("Invalid index in editTypeEntry()");
         }
+
         savedEntry.index = index;
+
         if (typeof options.data === "string") {
-            savedEntry.data = stringToByteArray(options.data)
-        } else {
-            savedEntry.data = options.data
+            savedEntry.data = stringToByteArray(options.data);
         }
+        else {
+            savedEntry.data = options.data;
+        }
+
         this._sectionOptions[SECTION_DATA].existingEntries.push(savedEntry);
-        this._optionalSectionFlags |= 1 << SECTION_DATA
+
+        this._optionalSectionFlags |= 1 << SECTION_DATA;
     }
+
     addCodeElementParser(index, callback) {
         if (typeof callback !== "function") {
-            throw new Error("Bad callback in addCodeElementParser()")
+            throw new Error("Bad callback in addCodeElementParser()");
         }
+
         if (index === null) {
-            this._globalFunctionCallback = callback
-        } else if (typeof index !== "number" && !(index instanceof WailVariable)) {
-            throw new Error("Bad id " + index + " in addCodeElementParser()")
-        } else {
+            this._globalFunctionCallback = callback;
+        }
+        else if (typeof index !== "number" && !(index instanceof WailVariable)) {
+            throw new Error("Bad id "+index+" in addCodeElementParser()");
+        }
+        else {
             const callbackObj = {};
             callbackObj.index = index;
             callbackObj.callback = callback;
-            this._functionCallbacks.push(callbackObj)
+
+            this._functionCallbacks.push(callbackObj);
         }
+
         this._optionalSectionFlags |= 1 << SECTION_IMPORT;
-        this._optionalSectionFlags |= 1 << SECTION_CODE
+        this._optionalSectionFlags |= 1 << SECTION_CODE;
     }
+
+    // TODO Global callbacks
     addInstructionParser(opcode, callback) {
         if (typeof callback !== "function") {
-            throw new Error("Bad callback in addInstructionParser()")
+            throw new Error("Bad callback in addInstructionParser()");
         }
+
         if (opcode === null) {
-            this._globalInstructionCallback = callback
-        } else if (isNaN(opcode) && !(opcode instanceof WailVariable)) {
-            throw new Error("Bad opcode " + opcode + " in addCodeElementParser()")
-        } else {
-            this._instructionCallbacks[opcode] = callback
+            this._globalInstructionCallback = callback;
         }
-        this._optionalSectionFlags |= 1 << SECTION_CODE
+        else if (isNaN(opcode) && !(opcode instanceof WailVariable)) {
+            throw new Error("Bad opcode "+opcode+" in addCodeElementParser()");
+        }
+        else {
+            this._instructionCallbacks[opcode] = callback;
+        }
+
+        this._optionalSectionFlags |= 1 << SECTION_CODE;
     }
+
     addRawSection(id, sectionBytes) {
         const sectionEntry = {};
+
         if (typeof id !== "number") {
-            throw new Error("Bad section index " + index + " in addRawSection()")
+            throw new Error("Bad section index "+index+" in addRawSection()");
         }
+
         sectionEntry.id = id;
         sectionEntry.bytes = sectionBytes;
-        this._newSections.push(sectionEntry)
+
+        this._newSections.push(sectionEntry);
     }
+
     _createVariable() {
         const variableId = this.__variables.length;
+
         const newVariable = new WailVariable(this, variableId);
+
         this.__variables.push(newVariable);
-        return newVariable
+
+        return newVariable;
     }
+
     _getVariable(id) {
-        return this.__variables[id]
+        return this.__variables[id];
     }
+
     _setVariable(id, value) {
-        this.__variables[id] = value
+        this.__variables[id] = value;
     }
+
+    // Parses an array in order to expand any variables to their proper representation.
+    // Throws an exception if the user has not specified a binary representation
+    // (Such as passing a WailVariable instead of a TypedWailVariable
     _expandArrayVariables(array) {
         for (let i = 0; i < array.length; i++) {
             const currentValue = array[i];
+
+            // TODO Remove spread operator since it's so slow
             if (currentValue instanceof Array) {
                 array.splice(i, 1);
-                array.splice(i, 0, ...currentValue)
-            } else if (currentValue instanceof TypedWailVariable) {
+
+                array.splice(i, 0, ...currentValue);
+            }
+            else if (currentValue instanceof TypedWailVariable) {
                 const thisVariable = currentValue;
+
                 array.splice(i, 1);
-                array.splice(i, 0, ...thisVariable.value)
-            } else if (currentValue instanceof WailVariable) {
-                throw new Error("Untyped WailVariable in " + "_expandArrayVariables()")
+
+                array.splice(i, 0, ...thisVariable.value);
+            }
+            // TODO Improve
+            else if (currentValue instanceof WailVariable) {
+                throw new Error("Untyped WailVariable in " +
+                                "_expandArrayVariables()");
             }
         }
-        return array
+
+        return array;
     }
+
     _readSection() {
         this.commitBytes();
+
         const id = this.readUint8();
+
         if (id > MAX_SECTION_ID) {
-            throw new Error("Illegal section ID " + id + ". Probably parsing incorrectly")
+            throw new Error("Illegal section ID "+id+". Probably parsing incorrectly");
         }
-        console.log('want to read section ' + id)
+
         let payloadLen;
+
+        // Skip over removed sections
         if (this._removeSectionIds.includes(id)) {
             payloadLen = this.readVarUint32();
             this.readBytes(payloadLen);
+
             this.updateCopyPosition();
-            return
+
+            return;
         }
+
         let parseSection = false;
-        if (this._requiredSectionFlags & 1 << id || this._optionalSectionFlags & 1 << id) {
-            parseSection = true
+
+        if ((this._requiredSectionFlags & (1 << id)) ||
+            (this._optionalSectionFlags & (1 << id))) {
+            parseSection = true;
         }
+
+        // The DataCount section violates the usual rule that non-custom sections must occur in
+        // numeric order. As a result, we must not assume a section is missing just because we have
+        // encountered the DataCount section
         if (id != SECTION_DATACOUNT) {
+            // At this point we want to check if a required section does not exist
+            // If so, we want to add an empty version of that section and add any new
+            // elements to it
             for (let missingId = 0; missingId < id; missingId++) {
                 const thisFlag = 1 << missingId;
+
                 const thisSectionRequired = this._requiredSectionFlags & thisFlag;
+
                 if (thisSectionRequired && !(thisSectionRequired & this._parsedSections)) {
                     switch (missingId) {
                         case SECTION_TYPE:
@@ -1481,32 +2007,48 @@ class WailParser extends BufferReader {
                             this._addDataSection();
                             break;
                         default:
-                            throw new Error("Attempted to add unhandled section")
+                            throw new Error("Attempted to add unhandled section");
                     }
+
                     this._parsedSections |= thisFlag;
-                    this.copyBuffer([id])
+
+                    // FIXME This breaks if we need to add 2 missing sections consecutively
+                    // See https://www.y8.com/games/slope_football for a testcase
+                    this.copyBuffer([id]);
                 }
             }
         }
+
         for (let i = 0; i < this._newSections.length; i++) {
             const thisNewSection = this._newSections[i];
+
             if (id > thisNewSection.id) {
                 const newPayload = thisNewSection.bytes;
+
                 const newPayloadLen = VarUint32ToArray(newPayload.length);
+
                 this.copyBuffer([thisNewSection.id]);
                 this.copyBuffer(newPayloadLen);
-                this.copyBuffer(newPayload)
+                this.copyBuffer(newPayload);
             }
         }
+
+        // Skip over the section if the user has not requested we parse it
         if (!parseSection) {
-            payloadLen = this.readVarUint32();
-            this.readBytes(payloadLen);
-            return
+                payloadLen = this.readVarUint32();
+                this.readBytes(payloadLen);
+
+                return;
         }
+
+        // If we have passed the IMPORT section (Regardless of whether or not it exists)
+        // it is safe to resolve any pending function indices
         if (id > SECTION_IMPORT && this._resolvedTables == false) {
-            this._resolveTableIndices()
+            this._resolveTableIndices();
         }
-        switch (id) {
+
+        // Now we can handle the new section
+        switch(id) {
             case SECTION_TYPE:
                 this._parseTypeSection();
                 break;
@@ -1535,934 +2077,1398 @@ class WailParser extends BufferReader {
                 this._parseDataSection();
                 break;
             default:
-                throw new Error("Attempted to parse unhandled section")
+                throw new Error("Attempted to parse unhandled section");
         }
-        this._parsedSections |= 1 << id
+
+        this._parsedSections |= 1 << id;
     }
+
+    // This function will resolve any WailVariables referring to indices into the function
+    // or global tables. We need to wait until after the IMPORT section has been parsed
+    // to do this because we need to know the count of imported functions/globals in
+    // order to properly build the associated tables
     _resolveTableIndices() {
         const pendingFuncs = this._sectionOptions[SECTION_FUNCTION].pending;
+
         for (let i = 0; i < pendingFuncs.length; i++) {
             const oldIndex = pendingFuncs[i].oldIndex;
             const variable = pendingFuncs[i].variable;
-            variable.value = this._getAdjustedFunctionIndex(oldIndex)
+
+            variable.value = this._getAdjustedFunctionIndex(oldIndex);
         }
+
+        // Same logic as above, but with global indexes
         const pendingGlobals = this._sectionOptions[SECTION_GLOBAL].pending;
+
         for (let i = 0; i < pendingGlobals.length; i++) {
             const oldIndex = pendingGlobals[i].oldIndex;
             const variable = pendingGlobals[i].variable;
-            variable.value = this._getAdjustedGlobalIndex(oldIndex)
+
+            variable.value = this._getAdjustedGlobalIndex(oldIndex);
         }
-        this._resolvedTables = true
+
+        this._resolvedTables = true;
     }
+
     _addTypeSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_TYPE].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             const form = optionsEntry.form;
             const params = optionsEntry.params;
+
             let returnType = null;
+
             if (typeof optionsEntry.returnType !== "undefined") {
-                returnType = optionsEntry.returnType
+                returnType = optionsEntry.returnType;
             }
+
             if (optionsEntry.variable instanceof WailVariable) {
-                optionsEntry.variable.value = oldCount + i
+                optionsEntry.variable.value = oldCount + i;
             }
+
             reader.copyBuffer(Uint8ToArray(form));
             reader.copyBuffer(VarUint32ToArray(params.length));
             reader.copyBuffer(params);
+
             if (returnType !== null) {
                 reader.copyBuffer(Uint8ToArray(1));
-                reader.copyBuffer(Uint8ToArray(returnType))
-            } else {
-                reader.copyBuffer(Uint8ToArray(0))
+                reader.copyBuffer(Uint8ToArray(returnType));
+            }
+            else {
+                reader.copyBuffer(Uint8ToArray(0));
             }
         }
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_TYPE]);
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseTypeSection() {
         this.commitBytes();
+
         const oldPayloadLen = this.readVarUint32();
+
         const start = this.inPos;
         const oldCount = this.readVarUint32();
         const end = this.inPos;
         const oldCountLength = end - start;
+
         const oldPayload = this.readBytes(oldPayloadLen - oldCountLength);
+
         const reader = new BufferReader(oldPayload);
+
         const newEntries = this._sectionOptions[SECTION_TYPE].newEntries;
         const existingEntries = this._sectionOptions[SECTION_TYPE].existingEntries;
+
         const newCount = oldCount + newEntries.length;
+
         reader.copyBuffer(VarUint32ToArray(newCount));
+
         for (let typeIndex = 0; typeIndex < oldCount; typeIndex++) {
+            // TODO Is there any purpose to modifying form?
             const form = reader.readUint8();
+
             let paramCount = reader.readVarUint32();
+
             let params = [];
+
             for (let j = 0; j < paramCount; j++) {
-                params.push(reader.readUint8())
+                params.push(reader.readUint8());
             }
+
             let returnCount = reader.readUint8();
+
             let returnType = null;
+
             if (returnCount == 1) {
-                returnType = reader.readUint8()
-            } else if (returnCount != 0) {
-                throw new Error("Invalid returnCount")
+                returnType = reader.readUint8();
             }
+            // Return count can only be 1 or 0
+            else if (returnCount != 0) {
+                throw new Error("Invalid returnCount");
+            }
+
             for (let i = 0; i < existingEntries.length; i++) {
                 const thisEntry = existingEntries[i];
+
                 const thisIndex = thisEntry.index;
+
                 if (typeIndex == thisIndex) {
                     if (typeof thisEntry.params !== "undefined") {
-                        params = mod.params
+                        params = mod.params;
                     }
+
+                    // TODO This doesn't allow for the possibility of removing return
                     if (typeof thisEntry.returnType !== "undefined") {
                         returnCount = 1;
-                        returnType = mod.returnType
+                        returnType = mod.returnType;
                     }
                 }
             }
+
             reader.copyBuffer(Uint8ToArray(form));
             reader.copyBuffer(VarUint32ToArray(params.length));
             reader.copyBuffer(params);
+
             if (returnCount) {
                 reader.copyBuffer(Uint8ToArray(1));
-                reader.copyBuffer(Uint8ToArray(returnType))
-            } else {
-                reader.copyBuffer(Uint8ToArray(0))
+                reader.copyBuffer(Uint8ToArray(returnType));
+            }
+            else {
+                reader.copyBuffer(Uint8ToArray(0));
             }
         }
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             const form = optionsEntry.form;
             const params = optionsEntry.params;
+
             let returnType = null;
+
             if (typeof optionsEntry.returnType !== "undefined") {
-                returnType = optionsEntry.returnType
+                returnType = optionsEntry.returnType;
             }
+
             if (optionsEntry.variable instanceof WailVariable) {
-                optionsEntry.variable.value = oldCount + i
+                optionsEntry.variable.value = oldCount + i;
             }
+
             reader.copyBuffer(Uint8ToArray(form));
             reader.copyBuffer(VarUint32ToArray(params.length));
             reader.copyBuffer(params);
+
             if (returnType !== null) {
                 reader.copyBuffer(Uint8ToArray(1));
-                reader.copyBuffer(Uint8ToArray(returnType))
-            } else {
-                reader.copyBuffer(Uint8ToArray(0))
+                reader.copyBuffer(Uint8ToArray(returnType));
+            }
+            else {
+                reader.copyBuffer(Uint8ToArray(0));
             }
         }
+
         const newPayload = reader.write();
+
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _addImportSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_IMPORT].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
         let importFuncIndex = 0;
         let importGlobalIndex = 0;
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             const moduleStr = stringToByteArray(optionsEntry.moduleStr);
             const moduleLen = VarUint32ToArray(moduleStr.length);
+
             const fieldStr = stringToByteArray(optionsEntry.fieldStr);
             const fieldLen = VarUint32ToArray(fieldStr.length);
-            const kind = [optionsEntry.kind];
+
+            const kind = [ optionsEntry.kind ];
+
             let type;
+
+            // TODO addImportEntry() should have validated that "kind" is sane, but we
+            // should still do some error checking here.
             if (optionsEntry.kind == KIND_FUNC) {
                 if (optionsEntry.type instanceof TypedWailVariable) {
-                    type = optionsEntry.type.value
-                } else if (optionsEntry.type instanceof WailVariable) {
-                    throw new Error("Untyped WailVariable in _addImportSection()")
-                } else {
-                    type = VarUint32ToArray(optionsEntry.type)
+                    type = optionsEntry.type.value;
                 }
-                if (optionsEntry.variable instanceof WailVariable) {
-                    optionsEntry.variable.value = this._importFuncCount + importFuncIndex++
+                else if (optionsEntry.type instanceof WailVariable) {
+                    throw new Error("Untyped WailVariable in _addImportSection()");
                 }
-            } else if (optionsEntry.kind == KIND_GLOBAL) {
-                type = [optionsEntry.type, optionsEntry.mutability];
+                else {
+                    type = VarUint32ToArray(optionsEntry.type);
+                }
+
                 if (optionsEntry.variable instanceof WailVariable) {
-                    optionsEntry.variable.value = this._importGlobalCount + importGlobalIndex++
+                    optionsEntry.variable.value = this._importFuncCount + importFuncIndex++;
                 }
             }
+            else if (optionsEntry.kind == KIND_GLOBAL) {
+                type = [ optionsEntry.type, optionsEntry.mutability ];
+
+                if (optionsEntry.variable instanceof WailVariable) {
+                    optionsEntry.variable.value = this._importGlobalCount + importGlobalIndex++;
+                }
+            }
+
             reader.copyBuffer(moduleLen);
             reader.copyBuffer(moduleStr);
             reader.copyBuffer(fieldLen);
             reader.copyBuffer(fieldStr);
             reader.copyBuffer(kind);
-            reader.copyBuffer(type)
-            if (optionsEntry.kind === KIND_MEMORY) {
-                reader.copyBuffer(0x01);
-                reader.copyBuffer(0x80);
-                reader.copyBuffer(0x20);
-                reader.copyBuffer(0x80);
-                reader.copyBuffer(0x20);
-            }
+            reader.copyBuffer(type);
         }
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_IMPORT]);
         this.copyBuffer(newPayloadLen);
         this.copyBuffer(newPayload);
+
+        // If the user is requesting we resolve a function index (using getFunctionIndex())
+        // we resolve it here
         const pendingFuncs = this._sectionOptions[SECTION_FUNCTION].pending;
+
         for (let i = 0; i < pendingFuncs.length; i++) {
             const oldIndex = pendingFuncs[i].oldIndex;
             const variable = pendingFuncs[i].variable;
-            variable.value = this._getAdjustedFunctionIndex(oldIndex)
+
+            variable.value = this._getAdjustedFunctionIndex(oldIndex);
         }
+
+        // Same logic as above, but with global indexes
         const pendingGlobals = this._sectionOptions[SECTION_GLOBAL].pending;
+
         for (let i = 0; i < pendingGlobals.length; i++) {
             const oldIndex = pendingGlobals[i].oldIndex;
             const variable = pendingGlobals[i].variable;
-            variable.value = this._getAdjustedGlobalIndex(oldIndex)
+
+            variable.value = this._getAdjustedGlobalIndex(oldIndex);
         }
     }
+
     _parseImportSection() {
         this.commitBytes();
+
         const oldPayloadLen = this.readVarUint32();
+
         const start = this.inPos;
         const oldCount = this.readVarUint32();
         const end = this.inPos;
         const oldCountLength = end - start;
+
         const oldPayload = this.readBytes(oldPayloadLen - oldCountLength);
+
         const reader = new BufferReader(oldPayload);
+
         const newEntries = this._sectionOptions[SECTION_IMPORT].newEntries;
         const existingEntries = this._sectionOptions[SECTION_IMPORT].existingEntries;
+
+        // We need to count imported function signatures to accurately
+        // get function indexes. Same with imported global variables
         for (let importIndex = 0; importIndex < oldCount; importIndex++) {
             reader.commitBytes();
+
             let moduleLen = reader.readVarUint32();
             let moduleStr = reader.readBytes(moduleLen);
             let fieldLen = reader.readVarUint32();
             let fieldStr = reader.readBytes(fieldLen);
+
             for (let i = 0; i < existingEntries.length; i++) {
                 const thisEntry = existingEntries[i];
+
                 const thisIndex = thisEntry.index;
+
                 if (importIndex == thisIndex) {
                     if (typeof thisEntry.moduleStr !== "undefined") {
                         moduleStr = thisEntry.moduleStr;
-                        moduleLen = thisEntry.moduleStr.length
+                        moduleLen = thisEntry.moduleStr.length;
                     }
+
                     if (typeof thisEntry.fieldStr !== "undefined") {
                         fieldStr = thisEntry.fieldStr;
-                        fieldLen = thisEntry.fieldStr.length
+                        fieldLen = thisEntry.fieldStr.length;
                     }
                 }
             }
+
             reader.copyBuffer(VarUint32ToArray(moduleLen));
             reader.copyBuffer(moduleStr);
             reader.copyBuffer(VarUint32ToArray(fieldLen));
             reader.copyBuffer(fieldStr);
+
             const kind = reader.readUint8();
+
             if (kind == KIND_FUNC) {
                 this._importFuncCount++;
-                reader.readVarUint32()
-            } else if (kind == KIND_TABLE) {
+                reader.readVarUint32();
+            }
+            else if (kind == KIND_TABLE) {
                 reader.readUint8();
                 const flags = reader.readUint8();
                 reader.readVarUint32();
                 if (flags) {
-                    reader.readVarUint32()
+                    reader.readVarUint32();
                 }
-            } else if (kind == KIND_MEMORY) {
+            }
+            else if (kind == KIND_MEMORY) {
                 const flags = reader.readUint8();
                 reader.readVarUint32();
                 if (flags) {
-                    reader.readVarUint32()
+                    reader.readVarUint32();
                 }
-            } else if (kind == KIND_GLOBAL) {
+            }
+            else if (kind == KIND_GLOBAL) {
                 this._importGlobalCount++;
                 reader.readUint8();
-                reader.readUint8()
-            } else {
-                throw "Invalid type kind: " + kind
+                reader.readUint8();
             }
+            else {
+                throw "Invalid type kind: " + kind;
+            }
+
+            // TODO Should return value of entry, not just name and kind
+            // TODO Should allow modification
             if (typeof this._globalImportCallback === "function") {
                 const parameters = {};
+
                 parameters.module = moduleStr;
                 parameters.field = fieldStr;
                 parameters.kind = kind;
-                this._globalImportCallback(parameters)
+
+                this._globalImportCallback(parameters);
             }
-            reader.commitBytes()
+
+            // Fix for https://github.com/Qwokka/WAIL/issues/3
+            reader.commitBytes();
         }
+
         let newCount = oldCount;
+
         let importFuncIndex = 0;
         let importGlobalIndex = 0;
+
         for (let i = 0; i < newEntries.length; i++, newCount++) {
             reader.commitBytes();
+
             const optionsEntry = newEntries[i];
+
             const moduleStr = stringToByteArray(optionsEntry.moduleStr);
             const moduleLen = VarUint32ToArray(moduleStr.length);
+
             const fieldStr = stringToByteArray(optionsEntry.fieldStr);
             const fieldLen = VarUint32ToArray(fieldStr.length);
-            const kind = [optionsEntry.kind];
+
+            const kind = [ optionsEntry.kind ];
+
             let type;
+
+            // TODO addImportEntry() should have validated that "kind" is sane, but we
+            // should still do some error checking here.
+            // TODO addImportEntry() should have validated that "kind" is sane, but we
+            // should still do some error checking here.
             if (optionsEntry.kind == KIND_FUNC) {
                 if (optionsEntry.type instanceof TypedWailVariable) {
-                    type = optionsEntry.type.value
-                } else if (optionsEntry.type instanceof WailVariable) {
-                    throw new Error("Untyped WailVariable in _addImportSection()")
-                } else {
-                    type = VarUint32ToArray(optionsEntry.type)
+                    type = optionsEntry.type.value;
                 }
+                else if (optionsEntry.type instanceof WailVariable) {
+                    throw new Error("Untyped WailVariable in _addImportSection()");
+                }
+                else {
+                    type = VarUint32ToArray(optionsEntry.type);
+                }
+
                 if (optionsEntry.variable instanceof WailVariable) {
-                    optionsEntry.variable.value = this._importFuncCount + importFuncIndex
+                    optionsEntry.variable.value = this._importFuncCount + importFuncIndex;
                 }
-                importFuncIndex++
-            } else if (optionsEntry.kind == KIND_GLOBAL) {
-                type = [optionsEntry.type, optionsEntry.mutability];
-                if (optionsEntry.variable instanceof WailVariable) {
-                    optionsEntry.variable.value = this._importGlobalCount + importGlobalIndex
-                }
-                importGlobalIndex++
-            } else if (optionsEntry.kind == KIND_MEMORY) {
-                type = [0x01, 0x80, 0x20, 0x80, 0x20];
+
+                importFuncIndex++;
             }
+            else if (optionsEntry.kind == KIND_GLOBAL) {
+                type = [ optionsEntry.type, optionsEntry.mutability ];
+
+                if (optionsEntry.variable instanceof WailVariable) {
+                    optionsEntry.variable.value = this._importGlobalCount + importGlobalIndex;
+                }
+
+                importGlobalIndex++;
+            }
+
             reader.copyBuffer(moduleLen);
             reader.copyBuffer(moduleStr);
             reader.copyBuffer(fieldLen);
             reader.copyBuffer(fieldStr);
             reader.copyBuffer(kind);
-            reader.copyBuffer(type)
+            reader.copyBuffer(type);
         }
+
         const newCountArray = VarUint32ToArray(newCount);
+
         const newPayload = reader.write();
+
         const newPayloadLen = VarUint32ToArray(newCountArray.length + newPayload.length);
+
         this.copyBuffer(newPayloadLen);
         this.copyBuffer(newCountArray);
         this.copyBuffer(newPayload);
+
+        // If we have passed the IMPORT section (Regardless of whether or not it exists)
+        // it is safe to resolve any pending function indices
         if (this._resolvedTables == false) {
-            this._resolveTableIndices()
+            this._resolveTableIndices();
         }
     }
+
     _addFunctionSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_FUNCTION].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
         for (let i = 0; i < newEntries.length; i++) {
             let optionsEntry = newEntries[i];
+
             let type;
+
             if (optionsEntry.type instanceof TypedWailVariable) {
-                type = optionsEntry.type.value
-            } else if (optionsEntry.type instanceof WailVariable) {
-                throw new Error("Untyped WailVariable in _parseFunctionSection()")
-            } else {
-                type = VarUint32ToArray(optionsEntry.type)
+                type = optionsEntry.type.value;
             }
+            else if (optionsEntry.type instanceof WailVariable) {
+                throw new Error("Untyped WailVariable in _parseFunctionSection()");
+            }
+            else {
+                type = VarUint32ToArray(optionsEntry.type);
+            }
+
             reader.copyBuffer(type);
+
             if (optionsEntry.variable instanceof WailVariable) {
                 const functionIndex = i + this._importFuncCount;
-                optionsEntry.variable.value = this._getAdjustedFunctionIndex(functionIndex)
+
+                optionsEntry.variable.value = this._getAdjustedFunctionIndex(functionIndex);
             }
         }
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_FUNCTION]);
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseFunctionSection() {
         this.commitBytes();
+
         const newEntries = this._sectionOptions[SECTION_FUNCTION].newEntries;
         const existingEntries = this._sectionOptions[SECTION_FUNCTION].existingEntries;
+
         const oldPayloadLen = this.readVarUint32();
+
         const start = this.inPos;
         const oldCount = this.readVarUint32();
         const end = this.inPos;
         const oldCountLength = end - start;
+
         const oldPayload = this.readBytes(oldPayloadLen - oldCountLength);
+
         const reader = new BufferReader(oldPayload);
+
         for (let funcIndex = 0; funcIndex < oldCount; funcIndex++) {
             reader.commitBytes();
+
             let funcType = reader.readVarUint32();
+
             for (let i = 0; i < existingEntries.length; i++) {
                 const thisEntry = existingEntries[i];
+
                 const thisIndex = thisEntry.index;
+
                 if (funcIndex == thisIndex) {
-                    funcType = thisEntry.type
+                    funcType = thisEntry.type;
                 }
             }
-            reader.copyBuffer(VarUint32ToArray(funcType))
+
+            reader.copyBuffer(VarUint32ToArray(funcType));
         }
+
         let newCount = oldCount;
+
         for (let i = 0; i < newEntries.length; i++, newCount++) {
             let optionsEntry = newEntries[i];
+
             let type;
+
             if (optionsEntry.type instanceof TypedWailVariable) {
-                type = optionsEntry.type.value
-            } else if (optionsEntry.type instanceof WailVariable) {
-                throw new Error("Untyped WailVariable in _parseFunctionSection()")
-            } else {
-                type = VarUint32ToArray(optionsEntry.type)
+                type = optionsEntry.type.value;
             }
+            else if (optionsEntry.type instanceof WailVariable) {
+                throw new Error("Untyped WailVariable in _parseFunctionSection()");
+            }
+            else {
+                type = VarUint32ToArray(optionsEntry.type);
+            }
+
             reader.copyBuffer(type);
+
             if (optionsEntry.variable instanceof WailVariable) {
                 const functionIndex = newCount + this._importFuncCount;
-                optionsEntry.variable.value = this._getAdjustedFunctionIndex(functionIndex)
+
+                optionsEntry.variable.value = this._getAdjustedFunctionIndex(functionIndex);
             }
         }
+
         const newCountArray = VarUint32ToArray(newCount);
+
         const newPayload = reader.write();
+
         const newPayloadLen = VarUint32ToArray(newCountArray.length + newPayload.length);
+
         this.copyBuffer(newPayloadLen);
         this.copyBuffer(newCountArray);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _addGlobalSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_GLOBAL].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             reader.copyBuffer(Uint8ToArray(optionsEntry.globalType.contentType));
             reader.copyBuffer(Uint8ToArray(optionsEntry.globalType.mutability));
+
             const initExpr = this._expandArrayVariables(optionsEntry.initExpr);
+
             reader.copyBuffer(initExpr);
+
             if (optionsEntry.variable instanceof WailVariable) {
-                optionsEntry.variable.value = this._importGlobalCount + i
+                optionsEntry.variable.value = this._importGlobalCount + i;
             }
         }
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_GLOBAL]);
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseGlobalSection() {
         this.commitBytes();
+
         const oldPayloadLen = this.readVarUint32();
+
         const start = this.inPos;
         const oldCount = this.readVarUint32();
         const end = this.inPos;
         const oldCountLength = end - start;
+
         const oldPayload = this.readBytes(oldPayloadLen - oldCountLength);
+
         const reader = new BufferReader(oldPayload);
+
         const newEntries = this._sectionOptions[SECTION_GLOBAL].newEntries;
         const existingEntries = this._sectionOptions[SECTION_GLOBAL].existingEntries;
+
         const newCount = oldCount + newEntries.length;
+
         reader.copyBuffer(VarUint32ToArray(newCount));
+
         for (let globalIndex = 0; globalIndex < oldCount; globalIndex++) {
             let newContentType;
             let newMutability;
+
             for (let i = 0; i < existingEntries.length; i++) {
                 const thisEntry = existingEntries[i];
+
                 let thisIndex = thisEntry.index;
+
                 if (thisIndex instanceof WailVariable) {
-                    thisIndex = thisIndex.value
+                    thisIndex = thisIndex.value;
                 }
+
                 if (globalIndex == thisIndex) {
                     newContentType = thisEntry.globalType.contentType;
-                    newMutability = thisEntry.globalType.mutability
+                    newMutability = thisEntry.globalType.mutability;
                 }
             }
+
             let contentType = reader.readUint8();
+
             if (typeof newContentType !== "undefined") {
-                reader.copyBuffer([newContentType])
+                reader.copyBuffer([newContentType]);
             }
+
             reader.commitBytes();
+
             let mutability = reader.readUint8();
+
             if (typeof newMutability !== "undefined") {
-                reader.copyBuffer([newMutability])
+                reader.copyBuffer([newMutability]);
             }
+
             let current;
+
             do {
-                current = this._readInstruction(reader)
+                current = this._readInstruction(reader);
             } while (current[0] != OP_END);
-            reader.commitBytes()
+
+            reader.commitBytes();
         }
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             reader.copyBuffer([optionsEntry.globalType.contentType]);
             reader.copyBuffer([optionsEntry.globalType.mutability]);
             reader.copyBuffer(this._expandArrayVariables(optionsEntry.initExpr));
+
             if (optionsEntry.variable instanceof WailVariable) {
-                optionsEntry.variable.value = this._importGlobalCount + oldCount + i
+                optionsEntry.variable.value = this._importGlobalCount + oldCount + i;
             }
         }
+
         const newPayload = reader.write();
+
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _addExportSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_EXPORT].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             const fieldStr = stringToByteArray(optionsEntry.fieldStr);
             const fieldLen = VarUint32ToArray(fieldStr.length);
             const kind = Uint8ToArray(optionsEntry.kind);
+
             let index;
+
             if (optionsEntry.index instanceof TypedWailVariable) {
-                index = optionsEntry.index.value
-            } else if (optionsEntry.index instanceof WailVariable) {
-                throw new Error("Untyped WailVariable in _parseExportSection()")
-            } else {
-                index = VarUint32ToArray(optionsEntry.index)
+                index = optionsEntry.index.value;
             }
+            else if (optionsEntry.index instanceof WailVariable) {
+                throw new Error("Untyped WailVariable in _parseExportSection()");
+            }
+            else {
+                index = VarUint32ToArray(optionsEntry.index);
+            }
+
             reader.copyBuffer(fieldLen);
             reader.copyBuffer(fieldStr);
             reader.copyBuffer(kind);
-            reader.copyBuffer(index)
+            reader.copyBuffer(index);
         }
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_EXPORT]);
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseExportSection() {
         this.commitBytes();
+
         const oldPayloadLen = this.readVarUint32();
+
         const oldPayload = this.readBytes(oldPayloadLen);
+
         const reader = new BufferReader(oldPayload);
+
         const oldCount = reader.readVarUint32();
+
         const newEntries = this._sectionOptions[SECTION_EXPORT].newEntries;
         const existingEntries = this._sectionOptions[SECTION_EXPORT].existingEntries;
+
         const newCount = oldCount + newEntries.length;
+
         reader.copyBuffer(VarUint32ToArray(newCount));
+
         for (let exportIndex = 0; exportIndex < oldCount; exportIndex++) {
             reader.commitBytes();
+
             let fieldLen = reader.readVarUint32();
             let fieldStr = reader.readBytes(fieldLen);
+
             let kind = reader.readUint8();
+
             let oldIndex = reader.readVarUint32();
+
             for (let i = 0; i < existingEntries.length; i++) {
                 const thisEntry = existingEntries[i];
+
                 const thisIndex = thisEntry.index;
+
                 if (exportIndex == thisIndex) {
                     if (typeof thisEntry.fieldStr !== "undefined") {
                         fieldStr = thisEntry.fieldStr;
-                        fieldLen = thisEntry.fieldStr.length
+                        fieldLen = thisEntry.fieldStr.length;
                     }
+
                     if (typeof thisEntry.kind !== "undefined") {
-                        kind = thisEntry.kind
+                        kind = thisEntry.kind;
                     }
+
                     if (typeof thisEntry.funcIndex !== "undefined") {
-                        oldIndex = thisEntry.funcIndex
+                        oldIndex = thisEntry.funcIndex;
                     }
                 }
             }
+
             let newIndex = oldIndex;
+
             if (oldIndex instanceof WailVariable) {
-                newIndex = oldIndex.value
-            } else {
+                newIndex = oldIndex.value;
+            }
+            else {
+                // Fix up export table based on any additions to the import table
                 if (kind == KIND_FUNC) {
-                    newIndex = this._getAdjustedFunctionIndex(oldIndex)
-                } else if (kind == KIND_GLOBAL) {
-                    newIndex = this._getAdjustedGlobalIndex(oldIndex)
+                    newIndex = this._getAdjustedFunctionIndex(oldIndex);
+                }
+                else if (kind == KIND_GLOBAL) {
+                    newIndex = this._getAdjustedGlobalIndex(oldIndex);
                 }
             }
+
             reader.copyBuffer(VarUint32ToArray(fieldLen));
             reader.copyBuffer(fieldStr);
             reader.copyBuffer([kind]);
             reader.copyBuffer(VarUint32ToArray(newIndex));
+
+            // TODO Should return value of entry, not just name and kind
+            // TODO Should allow modification
             if (typeof this._globalExportCallback === "function") {
                 const parameters = {};
+
                 parameters.field = fieldStr;
                 parameters.kind = kind;
-                this._globalExportCallback(parameters)
+
+                this._globalExportCallback(parameters);
             }
         }
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             const fieldStr = stringToByteArray(optionsEntry.fieldStr);
             const fieldLen = VarUint32ToArray(fieldStr.length);
             const kind = Uint8ToArray(optionsEntry.kind);
+
             let index;
+
             if (optionsEntry.index instanceof TypedWailVariable) {
-                index = optionsEntry.index.value
-            } else if (optionsEntry.index instanceof WailVariable) {
-                throw new Error("Untyped WailVariable in _parseExportSection()")
-            } else {
-                index = VarUint32ToArray(optionsEntry.index)
+                index = optionsEntry.index.value;
             }
+            else if (optionsEntry.index instanceof WailVariable) {
+                throw new Error("Untyped WailVariable in _parseExportSection()");
+            }
+            else {
+                index = VarUint32ToArray(optionsEntry.index);
+            }
+
             reader.copyBuffer(fieldLen);
             reader.copyBuffer(fieldStr);
             reader.copyBuffer(kind);
-            reader.copyBuffer(index)
+            reader.copyBuffer(index);
         }
+
         const newPayload = reader.write();
+
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseStartSection() {
         this.commitBytes();
+
+        // We effectively ignore elementCount since (AFAIK) there is no circumstance
+        // where there is more than one start entry in a binary
         const payloadSize = this.readVarUint32();
         const oldStart = this.readVarUint32();
+
         const existingEntries = this._sectionOptions[SECTION_START].existingEntries;
+
         let newStart;
+
         if (existingEntries.length > 0) {
+            // As far as I can tell there's no purpose to calling editStartEntry multiple
+            // times, but this is consistent with how other edit functions work
             for (let i = 0; i < existingEntries.length; i++) {
                 const thisEntry = existingEntries[i];
+
                 if (typeof thisEntry === "number") {
-                    newStart = thisEntry
-                } else if (thisEntry instanceof WailVariable) {
-                    newStart = thisEntry.value
-                } else {
-                    throw new Error("Invalid function index in _parseStartSection()")
+                    newStart = thisEntry;
+                }
+                else if (thisEntry instanceof WailVariable) {
+                    newStart = thisEntry.value;
+                }
+                else {
+                    throw new Error("Invalid function index in _parseStartSection()");
                 }
             }
-        } else {
-            newStart = this._getAdjustedFunctionIndex(oldStart)
         }
+        else {
+            newStart = this._getAdjustedFunctionIndex(oldStart);
+        }
+
         const newStartArray = VarUint32ToArray(newStart);
         const newPayloadLen = VarUint32ToArray(newStartArray.length);
+
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newStartArray)
+        this.copyBuffer(newStartArray);
     }
+
     _addElementSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_ELEMENT].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
         for (let i = 0; i < newEntries.length; i++, newCount++) {
             const optionsEntry = newEntries[i];
+
             const index = optionsEntry.index;
+
             if (index != 0) {
-                throw new Error("Unsupported element index " + index)
+                throw new Error("Unsupported element index "+index);
             }
+
             const offset = optionsEntry.offset;
+
             const elems = this._expandArrayVariables(optionsEntry.elems);
+
             const elemCount = elems.length;
+
             reader.copyBuffer(VarUint32ToArray(index));
             reader.copyBuffer(offset);
             reader.copyBuffer(VarUint32ToArray(elemCount));
-            reader.copyBuffer(elems)
+            reader.copyBuffer(elems);
         }
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_ELEMENT]);
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseElementSection() {
         this.commitBytes();
+
         const oldPayloadLen = this.readVarUint32();
+
         const start = this.inPos;
         const oldCount = this.readVarUint32();
         const end = this.inPos;
         const oldCountLength = end - start;
+
         const oldPayload = this.readBytes(oldPayloadLen - oldCountLength);
+
         const reader = new BufferReader(oldPayload);
+
         const newEntries = this._sectionOptions[SECTION_ELEMENT].newEntries;
         const existingEntries = this._sectionOptions[SECTION_ELEMENT].existingEntries;
+
         for (let elemIndex = 0; elemIndex < oldCount; elemIndex++) {
             const segmentFlags = reader.readVarUint32();
+
             if ((segmentFlags & (ELEM_SEG_FLAG_PASSIVE | ELEM_SEG_FLAG_EXPLICIT_INDEX)) == ELEM_SEG_FLAG_EXPLICIT_INDEX) {
-                reader.readVarUint32()
+                reader.readVarUint32();
             }
+
             if ((segmentFlags & ELEM_SEG_FLAG_PASSIVE) == 0) {
                 let current;
+
                 do {
-                    current = this._readInstruction(reader)
-                } while (current[0] != OP_END)
+                    current = this._readInstruction(reader);
+                } while (current[0] != OP_END);
             }
+
             if (segmentFlags & (ELEM_SEG_FLAG_PASSIVE | ELEM_SEG_FLAG_EXPLICIT_INDEX)) {
                 if (segmentFlags & ELEM_SEG_FLAG_USE_ELEM_EXPRS) {
-                    const elemType = reader.readVarUint32()
-                } else {
-                    reader.readUint8()
+                    const elemType = reader.readVarUint32();
+                }
+                else {
+                    reader.readUint8();
                 }
             }
+
             reader.commitBytes();
+
             let numElements = reader.readVarUint32();
+
             let elements = [];
+
             if (segmentFlags & ELEM_SEG_FLAG_USE_ELEM_EXPRS) {
                 for (let i = 0; i < numElements; i++) {
                     let current;
+
                     do {
-                        current = this._readInstruction(reader)
+                        current = this._readInstruction(reader);
                     } while (current[0] != OP_END);
-                    reader.commitBytes()
+
+                    reader.commitBytes();
                 }
-            } else {
+            }
+            else {
                 for (let i = 0; i < numElements; i++) {
                     const oldIndex = reader.readVarUint32();
+
                     const newIndex = this._getAdjustedFunctionIndex(oldIndex);
-                    elements.push(newIndex)
+
+                    elements.push(newIndex);
                 }
+
+                // TODO Support modifying when ELEM_SEG_FLAG_USE_ELEM_EXPRS is set
                 for (let i = 0; i < existingEntries.length; i++) {
                     const thisEntry = existingEntries[i];
+
                     const thisIndex = thisEntry.index;
+
                     if (elemIndex == thisIndex) {
+                        // TODO Support WailVariables
                         if (typeof thisEntry.elems !== "undefined") {
                             elements = thisEntry.elems;
-                            numElements = elements.length
+                            numElements = elements.length;
                         }
                     }
                 }
+
                 reader.copyBuffer(VarUint32ToArray(numElements));
+
                 for (let i = 0; i < numElements; i++) {
-                    reader.copyBuffer(VarUint32ToArray(elements[i]))
+                    reader.copyBuffer(VarUint32ToArray(elements[i]));
                 }
             }
         }
+
+        // TODO Support adding when ELEM_SEG_FLAG_USE_ELEM_EXPRS is set
         let newCount = oldCount;
+
         for (let i = 0; i < newEntries.length; i++, newCount++) {
             const optionsEntry = newEntries[i];
+
             const index = optionsEntry.index;
+
             if (index != 0) {
-                throw new Error("Unsupported element index " + index)
+                throw new Error("Unsupported element index "+index);
             }
+
             const offset = optionsEntry.offset;
+
             const elems = this._expandArrayVariables(optionsEntry.elems);
+
             const elemCount = elems.length;
+
             reader.copyBuffer(VarUint32ToArray(index));
             reader.copyBuffer(offset);
             reader.copyBuffer(VarUint32ToArray(elemCount));
-            reader.copyBuffer(elems)
+            reader.copyBuffer(elems);
         }
+
         const newPayload = reader.write();
+
         const newCountArray = VarUint32ToArray(newCount);
+
         const newPayloadLen = VarUint32ToArray(newCountArray.length + newPayload.length);
+
         this.copyBuffer(newPayloadLen);
         this.copyBuffer(newCountArray);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _addCodeSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_CODE].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
+        //
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_CODE]);
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseCodeSection() {
         this.commitBytes();
+
         const oldPayloadLen = this.readVarUint32();
+
         const oldPayload = this.readBytes(oldPayloadLen);
+
         const reader = new BufferReader(oldPayload);
+
         const oldCount = reader.readVarUint32();
+
         const newEntries = this._sectionOptions[SECTION_CODE].newEntries;
+
         const newCount = oldCount + newEntries.length;
+
         reader.copyBuffer(VarUint32ToArray(newCount));
+
         for (let i = 0; i < oldCount; i++) {
             const funcIndex = this._getAdjustedFunctionIndex(this._importFuncCount + i);
-            this._readFunction(reader, funcIndex)
+
+            this._readFunction(reader, funcIndex);
         }
+
         for (let currentIndex = oldCount; currentIndex < newCount; currentIndex++) {
             const realIndex = this._funcSectionIndexToFuncTableIndex(currentIndex);
-            const bodyReader = new BufferReader;
+
+            const bodyReader = new BufferReader();
+
             let foundEntry = false;
             let optionsEntry;
+
             for (let i = 0; i < newEntries.length; i++) {
                 optionsEntry = newEntries[i];
+
                 let optionsIndex = optionsEntry.index;
+
                 if (optionsIndex instanceof WailVariable) {
-                    optionsIndex = optionsIndex.value
+                    optionsIndex = optionsIndex.value;
                 }
+
                 if (optionsIndex == realIndex) {
                     foundEntry = true;
-                    break
+                    break;
                 }
             }
+
             if (!foundEntry) {
-                throw new Error("No CODE entry found for index " + realIndex)
+                throw new Error("No CODE entry found for index "+realIndex);
             }
+
             let locals = optionsEntry.locals;
             let code = optionsEntry.code;
+
             bodyReader.copyBuffer(VarUint32ToArray(locals.length));
+
             for (let i = 0; i < locals.length; i++) {
                 const thisLocal = locals[i];
+
                 bodyReader.copyBuffer(VarUint32ToArray(1));
-                bodyReader.copyBuffer(Uint8ToArray(thisLocal))
+                bodyReader.copyBuffer(Uint8ToArray(thisLocal));
             }
+
             code = this._expandArrayVariables(code);
+
             bodyReader.copyBuffer(code);
+
             const bodyPayload = bodyReader.write();
+
             const bodySize = VarUint32ToArray(bodyPayload.length);
+
             reader.copyBuffer(bodySize);
-            reader.copyBuffer(bodyPayload)
+            reader.copyBuffer(bodyPayload);
         }
+
         const newPayload = reader.write();
+
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _addDataSection() {
-        const reader = new BufferReader;
+        const reader = new BufferReader();
+
         const newEntries = this._sectionOptions[SECTION_DATA].newEntries;
+
         const entryCountArray = VarUint32ToArray(newEntries.length);
+
         reader.copyBuffer(entryCountArray);
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             let index;
+
             if (typeof optionsEntry.index !== "undefined") {
-                index = VarUint32ToArray(optionsEntry.index)
-            } else {
-                index = VarUint32ToArray(0)
+                index = VarUint32ToArray(optionsEntry.index);
             }
+            else {
+                index = VarUint32ToArray(0);
+            }
+
             const offset = optionsEntry.offset;
+
+            // Initialization expressions must always end with an "end" instruction
             if (offset[offset.length - 1] != OP_END) {
-                offset.push(OP_END)
+                offset.push(OP_END);
             }
+
             const data = optionsEntry.data;
             const size = VarUint32ToArray(data.length);
+
             reader.copyBuffer(index);
             reader.copyBuffer(offset);
             reader.copyBuffer(size);
-            reader.copyBuffer(data)
+            reader.copyBuffer(data);
         }
+
         const newPayload = reader.write();
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer([SECTION_DATA]);
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
     _parseDataSection() {
         this.commitBytes();
+
         const oldPayloadLen = this.readVarUint32();
+
+        // This is gross but VarUInt32s can be variable lengths (obviously).
+        // So this is an easy way to account for any possible length.
         const start = this.inPos;
         const oldCount = this.readVarUint32();
         const end = this.inPos;
         const oldCountLength = end - start;
+
         const oldPayload = this.readBytes(oldPayloadLen - oldCountLength);
+
         const reader = new BufferReader(oldPayload);
+
         const newEntries = this._sectionOptions[SECTION_DATA].newEntries;
         const existingEntries = this._sectionOptions[SECTION_DATA].existingEntries;
+
         const newCount = oldCount + newEntries.length;
+
         reader.copyBuffer(VarUint32ToArray(newCount));
+
         for (let dataIndex = 0; dataIndex < oldCount; dataIndex++) {
             let current;
+
             do {
-                current = this._readInstruction(reader)
+                current = this._readInstruction(reader);
             } while (current[0] !== OP_END);
+
             reader.commitBytes();
+
             let size = reader.readVarUint32();
+
             let data = reader.readBytes(size);
+
             for (let i = 0; i < existingEntries.length; i++) {
                 const thisEntry = existingEntries[i];
+
                 const thisIndex = thisEntry.index;
+
                 if (dataIndex == thisIndex) {
                     if (typeof thisEntry.data !== "undefined") {
                         data = thisEntry.data;
-                        size = data.length
+                        size = data.length;
                     }
                 }
             }
+
             reader.copyBuffer(VarUint32ToArray(size));
-            reader.copyBuffer(data)
+            reader.copyBuffer(data);
         }
+
         for (let i = 0; i < newEntries.length; i++) {
             const optionsEntry = newEntries[i];
+
             let index;
+
             if (typeof optionsEntry.index !== "undefined") {
-                index = VarUint32ToArray(optionsEntry.index)
-            } else {
-                index = VarUint32ToArray(0)
+                index = VarUint32ToArray(optionsEntry.index);
             }
+            else {
+                index = VarUint32ToArray(0);
+            }
+
             const offset = optionsEntry.offset;
+
+            // Initialization expressions must always end with an "end" instruction
             if (offset[offset.length - 1] != OP_END) {
-                offset.push(OP_END)
+                offset.push(OP_END);
             }
+
             const data = optionsEntry.data;
             const size = VarUint32ToArray(data.length);
+
             reader.copyBuffer(index);
             reader.copyBuffer(offset);
             reader.copyBuffer(size);
-            reader.copyBuffer(data)
+            reader.copyBuffer(data);
         }
+
         const newPayload = reader.write();
+
         const newPayloadLen = VarUint32ToArray(newPayload.length);
+
         this.copyBuffer(newPayloadLen);
-        this.copyBuffer(newPayload)
+        this.copyBuffer(newPayload);
     }
+
+    // TODO Modify locals/params
     _readFunction(reader, funcIndex) {
         const existingEntries = this._sectionOptions[SECTION_CODE].existingEntries;
+
         const bodySize = reader.readVarUint32();
+
         const bodyPayload = reader.readBytes(bodySize);
+
         const headerReader = new BufferReader(bodyPayload);
+
         const localCount = headerReader.readVarUint32();
+
         for (let i = 0; i < localCount; i++) {
             headerReader.readVarUint32();
-            headerReader.readUint8()
+            headerReader.readUint8();
         }
+
         headerReader.commitBytes();
+
         const bodyReader = new BufferReader(bodyPayload.subarray(headerReader.inPos));
+
         while (bodyReader.inPos < bodyReader.inBuffer.length) {
             this._readInstruction(bodyReader);
-            bodyReader.commitBytes()
+            bodyReader.commitBytes();
         }
+
         let newHeader = headerReader.write();
         let newBody = bodyReader.write();
+
+        // TODO Should probably prioritize non-global callbacks over global callbacks
         if (typeof this._globalFunctionCallback === "function") {
             const parameters = {};
+
             parameters.bytes = bodyReader.write();
             parameters.index = funcIndex;
+
             const callbackResult = this._globalFunctionCallback(parameters);
+
             if (callbackResult !== false) {
-                newBody = callbackResult
+                newBody = callbackResult;
             }
-        } else {
+        }
+        else {
+            // TODO Callback should send and receive local info to/from callback
             for (let i = 0; i < this._functionCallbacks.length; i++) {
                 const thisCallback = this._functionCallbacks[i];
+
                 let thisIndex = thisCallback.index;
+
                 if (thisIndex instanceof WailVariable) {
-                    thisIndex = thisIndex.value
+                    thisIndex = thisIndex.value;
                 }
+
                 if (thisIndex === funcIndex) {
                     const parameters = {};
+
                     parameters.bytes = bodyReader.write();
                     parameters.index = funcIndex;
+
+                    // TODO Handle locals as well
                     const callbackResult = thisCallback.callback(parameters);
+
                     if (callbackResult !== false) {
-                        newBody = callbackResult
+                        newBody = callbackResult;
                     }
                 }
             }
         }
+
         for (let i = 0; i < existingEntries.length; i++) {
             const thisEntry = existingEntries[i];
+
             let thisIndex = thisEntry.index;
+
             if (thisIndex instanceof WailVariable) {
-                thisIndex = thisIndex.value
+                thisIndex = thisIndex.value;
             }
+
             if (funcIndex == thisIndex) {
-                const newHeaderReader = new BufferReader;
-                const newBodyReader = new BufferReader;
+                const newHeaderReader = new BufferReader();
+                const newBodyReader = new BufferReader();
+
                 const locals = thisEntry.locals;
+
                 newHeaderReader.copyBuffer(VarUint32ToArray(locals.length));
+
                 for (let i = 0; i < locals.length; i++) {
                     const thisLocal = locals[i];
+
                     newHeaderReader.copyBuffer(VarUint32ToArray(1));
-                    newHeaderReader.copyBuffer(Uint8ToArray(thisLocal))
+                    newHeaderReader.copyBuffer(Uint8ToArray(thisLocal));
                 }
+
                 const code = this._expandArrayVariables(thisEntry.code);
+
                 newBodyReader.copyBuffer(code);
+
                 newHeader = newHeaderReader.write();
-                newBody = newBodyReader.write()
+                newBody = newBodyReader.write();
             }
         }
+
         let newPayloadLen = VarUint32ToArray(newHeader.length + newBody.length);
+
         reader.copyBuffer(newPayloadLen);
         reader.copyBuffer(newHeader);
-        reader.copyBuffer(newBody)
+        reader.copyBuffer(newBody);
     }
+
     _readInstruction(reader) {
         reader.commitBytes();
         reader.setAnchor();
+
         const opcode = reader.readUint8();
+
         let oldTarget;
         let newTarget;
         let arg;
+
         switch (opcode) {
             case OP_UNREACHABLE:
             case OP_NOP:
@@ -2622,8 +3628,11 @@ class WailParser extends BufferReader {
             case OP_GET_GLOBAL:
             case OP_SET_GLOBAL:
                 reader.commitBytes();
+
                 oldTarget = reader.readVarUint32();
+
                 newTarget = this._getAdjustedGlobalIndex(oldTarget);
+
                 reader.copyBuffer(VarUint32ToArray(newTarget));
                 break;
             case OP_TABLE_GET:
@@ -2664,16 +3673,21 @@ class WailParser extends BufferReader {
                 break;
             case OP_BR_TABLE:
                 const count = reader.readVarUint32();
+
                 for (let i = 0; i < count; i++) {
-                    reader.readVarUint32()
+                    reader.readVarUint32();
                 }
+
                 reader.readVarUint32();
                 break;
             case OP_CALL:
             case OP_REF_FUNC:
                 reader.commitBytes();
+
                 oldTarget = reader.readVarUint32();
+
                 newTarget = this._getAdjustedFunctionIndex(oldTarget);
+
                 reader.copyBuffer(VarUint32ToArray(newTarget));
                 break;
             case OP_CALL_INDIRECT:
@@ -2688,6 +3702,7 @@ class WailParser extends BufferReader {
                 break;
             case OP_MISC:
                 arg = reader.readUint8();
+
                 switch (arg) {
                     case ARG_I32_TRUNC_SAT_F32_S:
                     case ARG_I32_TRUNC_SAT_F32_U:
@@ -2717,11 +3732,12 @@ class WailParser extends BufferReader {
                         reader.readUint8();
                         break;
                     default:
-                        throw new Error("Unknown argument '" + arg + "' for OP_MISC")
+                        throw new Error("Unknown argument '" + arg + "' for OP_MISC");
                 }
                 break;
             case OP_SIMD:
                 arg = reader.readUint8();
+
                 switch (arg) {
                     case SIMD_I8X16_SWIZZLE:
                     case SIMD_I8X16_SPLAT:
@@ -2972,46 +3988,70 @@ class WailParser extends BufferReader {
                         reader.readUint8();
                         break;
                     default:
-                        throw new Error("Unknown argument '" + arg + "' for OP_SIMD")
+                        throw new Error("Unknown argument '" + arg + "' for OP_SIMD");
                 }
                 break;
             case OP_ATOMIC:
                 arg = reader.readUint8();
-                if (arg > ARG_I64_ATOMIC_RMW_CMPXCHG_32U || arg > 2 && arg < 16) {
-                    throw new Error("Unknown argument '" + arg + "' for OP_ATOMIC. Probably parsing incorrectly")
+
+                if (arg > ARG_I64_ATOMIC_RMW_CMPXCHG_32U || (arg > 0x2 && arg < 0x10)) {
+                    throw new Error("Unknown argument '" + arg + "' for OP_ATOMIC. Probably parsing incorrectly");
                 }
+
+                //reader.readUint8();
                 reader.readVarUint32();
                 reader.readVarUint32();
+
                 break;
             default:
-                throw new Error("Unknown opcode '" + opcode + "'. Probably parsing incorrectly")
+                throw new Error("Unknown opcode '" + opcode + "'. Probably parsing incorrectly");
         }
+
         reader.commitBytes();
+
         if (typeof this._instructionCallbacks[opcode] !== "undefined") {
             const instrBytes = reader.readFromAnchor();
+
             const callbackResults = this._instructionCallbacks[opcode](instrBytes);
-            reader.writeAtAnchor(callbackResults)
-        } else if (typeof this._globalInstructionCallback === "function") {
-            const instrBytes = reader.readFromAnchor();
-            const callbackResults = this._globalInstructionCallback[opcode](instrBytes);
-            reader.writeAtAnchor(callbackResults)
+
+            reader.writeAtAnchor(callbackResults);
         }
+        else if (typeof this._globalInstructionCallback === "function") {
+            const instrBytes = reader.readFromAnchor();
+
+            const callbackResults = this._globalInstructionCallback[opcode](instrBytes);
+
+            reader.writeAtAnchor(callbackResults);
+        }
+
         const fullInstruction = reader.readFromAnchor();
-        return fullInstruction
+
+        return fullInstruction;
     }
+
+    // Converts an index into the FUNCTION section into an adjusted index into the program's
+    // function table
     _funcSectionIndexToFuncTableIndex(index) {
-        return index + this._importFuncCount + this._importFuncNewCount
+        return index + this._importFuncCount + this._importFuncNewCount;
     }
+
+    // Helper function used to "fix up" an index into the function table when the table
+    // may have been modified
     _getAdjustedFunctionIndex(index) {
         if (index >= this._importFuncCount) {
-            return index + this._importFuncNewCount
+            return index + this._importFuncNewCount;
         }
-        return index
+
+        return index;
     }
+
+    // Helper function used to "fix up" an index into the global table when the table
+    // may have been modified
     _getAdjustedGlobalIndex(index) {
         if (index >= this._importGlobalCount) {
-            return index + this._importGlobalNewCount
+            return index + this._importGlobalNewCount;
         }
-        return index
+
+        return index;
     }
 }

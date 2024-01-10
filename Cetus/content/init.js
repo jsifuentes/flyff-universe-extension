@@ -928,7 +928,7 @@ const instrumentBinary = function(bufferSource) {
 
         window.info(hookFunction);
 
-        wail.addCodeElementParser(2657, function(instrBytes) {
+        wail.addCodeElementParser(2658, function(instrBytes) {
             window.info(instrBytes.index);
             window.info(hookFunction.varUint32());
             const reader = new BufferReader(instrBytes.bytes);
@@ -1090,26 +1090,32 @@ const getMemoryFromObject = function(inObject, memoryDescriptor) {
         }
 };
 
-let watchAddressRange = null;
+let watchAddressRanges = {};
 let memoryAddressReadCallback = null;
 const waitForMemoryAddressRead = function(startAddr, length, forMs = 0, accessCallback = null) {
-    watchAddressRange = [ parseInt(startAddr), parseInt(startAddr) + length ];
+    const key = `${startAddr}-${length}`;
+    watchAddressRanges[key] = {
+        range: [ parseInt(startAddr), parseInt(startAddr) + length ],
+        callback: accessCallback,
+    }
 
-    window.info(`starting to watch address range: ${JSON.stringify(watchAddressRange)}`);
+    window.info(`starting to watch address range: ${JSON.stringify(watchAddressRanges[key])}`);
 
     if (forMs > 0) {
         setTimeout(function () {
-            watchAddressRange = null;
+            delete watchAddressRanges[key];
         }, forMs)
     }
 
-    if (accessCallback) {
-        memoryAddressReadCallback = accessCallback;
-    }
+    return key;
 }
 
-const stopRecordingHits = function () {
-    watchAddressRange = null;
+const stopRecordingHits = function (key) {
+    if (key && watchAddressRanges[key]) {
+        delete watchAddressRanges[key];
+    } else if (!key) {
+        watchAddressRanges = null;
+    }
 }
 
 // Callback that is executed when a read watchpoint is hit
@@ -1121,24 +1127,29 @@ local_3 = wp addr
 local_4 = wp size
 */
 
-var readWatchCallback = function(basePtr, offset, size) {
-    if (watchAddressRange) {
+function checkAddressAgainstWatchList(addr, size) {
+    if (Object.keys(watchAddressRanges).length > 0) {
         /**
          * The variable `watchAdressRange` is an array of two elements: the starting memory index and the ending memory index.
          * This code checks if basePtr + offset and basePtr + offset + size is in the range of watchAddressRange.
          */
-        const startAddr = watchAddressRange[0];
-        const endAddr = watchAddressRange[1];
-        const addr = parseInt(basePtr) + parseInt(offset);
-        if (addr >= startAddr && addr + size <= endAddr) {
-            window.info(`Accessed: ${toHex(addr)}\n` + new Error().stack);
-            debugger;
-            if (memoryAddressReadCallback) {
-                memoryAddressReadCallback(basePtr, offset, size, new Error().stack);
-                watchAddressRange = null;
+        for (const key in watchAddressRanges) {
+            const watchAddressRange = watchAddressRanges[key];
+            const startAddr = watchAddressRange.range[0];
+            const endAddr = watchAddressRange.range[1];
+            if (addr >= startAddr && addr + size <= endAddr) {
+                window.info(`Accessed: ${toHex(addr)}\n` + new Error().stack);
+                debugger;
+                if (watchAddressRange.callback) {
+                    watchAddressRange.callback(basePtr, offset, size, new Error().stack);
+                }
             }
         }
     }
+}
+
+var readWatchCallback = function(basePtr, offset, size) {
+    return checkAddressAgainstWatchList(parseInt(basePtr) + parseInt(offset), size);
 };
 
 // Callback that is executed when a write watchpoint is hit
@@ -1238,6 +1249,24 @@ function readBytes(address, size = 16, intSize = 8, asAscii = false) {
     return bytes;
 }
 
+var intToRGB = function(value, alpha = 1, max = 255) {
+    var valueAsPercentageOfMax = value / max;
+    // actual max is 16777215 but represnts white so we will take a max that is
+    // below this to avoid white
+    var MAX_RGB_INT = 16600000;
+    var valueFromMaxRgbInt = Math.floor(MAX_RGB_INT * valueAsPercentageOfMax);
+    
+    //credit to https://stackoverflow.com/a/2262117/2737978 for the idea of how to implement
+    var blue = Math.floor(valueFromMaxRgbInt % 256);
+    var green = Math.floor(valueFromMaxRgbInt / 256 % 256);
+    var red = Math.floor(valueFromMaxRgbInt / 256 / 256 % 256);
+
+    var luma = ((0.299 * red) + (0.587 * green) + (0.114 * blue)) / 255;
+    var textColor = luma > 125 ? 'black' : 'white';
+   
+    return `background: rgba(${red}, ${green}, ${blue}, ${alpha}); color: ${textColor}`;
+  }
+
 const hookEncryptionFunction = function(ptr) {
     const view = new DataView(wasmMemory.buffer);
 
@@ -1252,7 +1281,7 @@ const hookEncryptionFunction = function(ptr) {
     const length = msgAddresses[1] - msgAddresses[0];
     const bytes = readBytes(msgAddresses[0], length, 8, false);
 
-    const style = `background: rgba(${bytes[0]}, ${bytes[0]}, ${bytes[0]}, .2);`;
+    const style = `${intToRGB(bytes[0])}`;
 
     window.info("%c" + bytes, style);
     window.info("%c" + bytes.map((v) => String.fromCharCode(v)).join(""), style);

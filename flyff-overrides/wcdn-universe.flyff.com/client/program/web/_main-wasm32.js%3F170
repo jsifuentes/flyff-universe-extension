@@ -1363,6 +1363,14 @@ function __emval_get_method_caller(argCount, argTypes) {
         functionBody += "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? "+" + offset : "") + ");\n";
         offset += types[i + 1]["argPackAdvance"]
     }
+    functionBody += `
+        if (name === "fillText") {
+            if (arg0 === "獨") {
+                debugger;
+            }
+            window.info(name + ": " + JSON.stringify([${argsList}]));
+        }
+    `;
     functionBody += "    var rv = handle[name](" + argsList + ");\n";
     for (var i = 0; i < argCount - 1; ++i) {
         if (types[i + 1]["deleteObject"]) {
@@ -1415,6 +1423,7 @@ function craftEmvalAllocator(argCount) {
         }
 
         obj.addEventListener('message', function(e) {
+            debugger;
             addToLog('Received: ' + Array.from(new Uint8Array(e.data)).join("\t"), 'background: purple');
         });
 
@@ -5007,6 +5016,8 @@ function _emscripten_log(flags, format, varargs) {
 }
 function _emscripten_memcpy_big(dest, src, num) {
     HEAPU8.copyWithin(dest, src, src + num)
+    checkAddressAgainstWatchList(dest, num);
+    checkAddressAgainstWatchList(src, num);
 }
 function _emscripten_performance_now() {
     return performance.now()
