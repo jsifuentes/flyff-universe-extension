@@ -18,7 +18,9 @@ export function encryptionFunctionHook(ptr) {
     // convert to ascii
     const messageAscii = new TextDecoder("ascii").decode(message);
 
-    wyff.logger.info(`SENDING\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: #c4ffcd; color: black;', '', 'background: #a7facd; color: black;');
+    wyff.logger.info(`SENDING\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: #c4ffcd; color: black;', '', 'background: #a7facd; color: black;', {
+        buffer: new Uint8Array(message),
+    });
 }
 
 export function hookEncryptionFunction(parser, hookRef) {
