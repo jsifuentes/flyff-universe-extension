@@ -6,7 +6,7 @@ export function decryptionFunctionHook(beginAddress, endAddress) {
     const message = new Uint8Array(wasmMemory.buffer, beginAddress, length);
     // convert to ascii
     const messageAscii = new TextDecoder("ascii").decode(message);
-    wyff.logger.info(`RECEIVED\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: #c4e2ff; color: black;', '', 'background: #c4d0ff; color: black;', {
+    wyff.logger.debug(`RECEIVED\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: #c4e2ff; color: black;', '', 'background: #c4d0ff; color: black;', {
         buffer: new Uint8Array(message),
     });
 }

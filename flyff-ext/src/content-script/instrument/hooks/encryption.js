@@ -1,5 +1,6 @@
 import { uint64ToUint8Array } from "../../../shared/utils/bytes";
 import findFunctionUsingBytes from "../find-function";
+import handleMessageByCommand from "./sending-hooks";
 
 export function encryptionFunctionHook(ptr) {
     /**
@@ -14,12 +15,27 @@ export function encryptionFunctionHook(ptr) {
     // calculate length using addresses
     const messageLength = endOfMsgPtr - beginningOfMsgPtr;
     // get the message
-    const message = new Uint8Array(wasmMemory.buffer, beginningOfMsgPtr, messageLength);
+    const message = new Uint8Array(new Uint8Array(wasmMemory.buffer, beginningOfMsgPtr, messageLength));
+
+    // get first 4 bytes of the message
+    const first4Bytes = message.slice(0, 4);
+    // convert to uint32
+    const first4BytesUint32 = new Uint32Array(first4Bytes.buffer)[0];
+    let cmdNumber = first4BytesUint32;
+    let isMessageEncrypted = first4Bytes[3] === 100;
+    if (isMessageEncrypted) {
+        // the command packet is encrypted
+        const secretnumber = 1684713472;
+        cmdNumber = first4BytesUint32 ^ secretnumber;
+
+        handleMessageByCommand(cmdNumber, message);
+    }
+
     // convert to ascii
     const messageAscii = new TextDecoder("ascii").decode(message);
 
-    wyff.logger.info(`SENDING\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: #c4ffcd; color: black;', '', 'background: #a7facd; color: black;', {
-        buffer: new Uint8Array(message),
+    wyff.logger.debug(`SENDING (cmd: ${cmdNumber} (${isMessageEncrypted ? 'E' : 'NE'}))\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: #c4ffcd; color: black;', '', 'background: #a7facd; color: black;', {
+        buffer: message,
     });
 }
 
