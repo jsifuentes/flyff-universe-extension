@@ -3,7 +3,7 @@ import instrumentBinary from "../instrument";
 
 function createHookFunction(original) {
     return async function(bufferSource, importObject = {}) {
-        wyff.logger.info("WebAssembly.instantiate() intercepted");
+        wyff.logger.debug("WebAssembly.instantiate() intercepted");
 
         const instrumentResults = instrumentBinary(bufferSource);
         if (instrumentResults.imports) {

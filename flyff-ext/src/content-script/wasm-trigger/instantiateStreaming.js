@@ -11,7 +11,7 @@ async function getSourceBuffer() {
 
 function createHookFunction(original) {
     return async function(sourceObj, importObject = {}) {
-        wyff.logger.info("WebAssembly.instantiateStreaming() intercepted");
+        wyff.logger.debug("WebAssembly.instantiateStreaming() intercepted");
         const buffer = await getSourceBuffer(sourceObj);
         return WebAssembly.instantiate(buffer, importObject);
     };

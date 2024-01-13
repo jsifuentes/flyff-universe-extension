@@ -1,11 +1,14 @@
-import { decryptionFunctionHook, hookDecryptionFunction } from "./decryption.js";
-import { encryptionFunctionHook, hookEncryptionFunction } from "./encryption";
+import { decryptionFunctionHook, hookDecryptionFunction } from "./hooks/decryption.js";
+import { encryptionFunctionHook, hookEncryptionFunction } from "./hooks/encryption.js";
 
 function instrumentResults(imports, binary) {
     return { imports, binary };
 }
 
 function importFunction(parser, name, params, returnType) {
+    // Add a new function into the wasm binary
+    // 'env' is referring to the import object name that contains
+    // all of our imports. 
     return parser.addImportEntry({
         moduleStr: "env",
         fieldStr: name,
@@ -20,16 +23,32 @@ function importFunction(parser, name, params, returnType) {
 
 export default function instrumentBinary(binary) {
     const parser = new WailParser(binary);
-    const imports = { env: {} };
+    const imports = {
+        env: {
+            encryptionHook: encryptionFunctionHook,
+            decryptionHook: decryptionFunctionHook
+        }
+    };
 
-    imports.env.encryptionHook = encryptionFunctionHook;
+    // Import all functions up front so the function indexes are known
     const encryptionHookRef = importFunction(parser, "encryptionHook", ["i32"]);
-    hookEncryptionFunction(parser, encryptionHookRef);
-
-    imports.env.decryptionHook = decryptionFunctionHook;
     const decryptionHookRef = importFunction(parser, "decryptionHook", ["i32", "i32"]);
-    hookDecryptionFunction(parser, decryptionHookRef);
 
+    try {
+        hookEncryptionFunction(parser, encryptionHookRef);
+    } catch (e) {
+        wyff.logger.error(`error hooking encryption function`);
+        wyff.logger.error(e);
+    }
+
+    try {
+        hookDecryptionFunction(parser, decryptionHookRef);
+    } catch (e) {
+        wyff.logger.error(`error hooking decryption function`);
+        wyff.logger.error(e);
+    }
+
+    // parse and write the new binary
     parser.parse();
     return instrumentResults(imports, parser.write());
 }
