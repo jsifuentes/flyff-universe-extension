@@ -24,4 +24,15 @@ export default function handleMovementPacket(message) {
 
         wyff.logger.info(`moving using the mouse: x: ${x}, y: ${y}, z: ${z}`);
     }
+
+    wyff.logger.info(
+
+        `%c${message.slice(4, startOfMovementOperationArguments)}` +
+        `%c${message.slice(startOfMovementOperationArguments + 1)}`,
+
+        'background: orange; color: black;',
+        'background: yellow; color: black;',
+
+    );
+
 }
