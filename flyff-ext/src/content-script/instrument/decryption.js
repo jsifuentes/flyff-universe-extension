@@ -3,7 +3,7 @@ export function decryptionFunctionHook(beginAddress, endAddress) {
     const message = new Uint8Array(wasmMemory.buffer, beginAddress, length);
 
     const messageAscii = new TextDecoder("ascii").decode(message);
-    wyff.logger.info(`RECEIVED\t\t${message.join("\t")}\n${messageAscii}`);
+    wyff.logger.info(`RECEIVED\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: cyan', '', 'background: #00d4d4');
 }
 
 export function hookDecryptionFunction(parser, hookRef) {

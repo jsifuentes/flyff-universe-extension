@@ -6,7 +6,7 @@ export function encryptionFunctionHook(ptr) {
     const message = new Uint8Array(wasmMemory.buffer, beginningOfMsgPtr, messageLength);
 
     const messageAscii = new TextDecoder("ascii").decode(message);
-    wyff.logger.info(`SENDING\t\t${message.join("\t")}\n${messageAscii}`);
+    wyff.logger.info(`SENDING\n%c${message.join("\t")}%c\n%c${messageAscii}`, 'background: #63ff63', '', 'background: #00b802');
 }
 
 export function hookEncryptionFunction(parser, hookRef) {
