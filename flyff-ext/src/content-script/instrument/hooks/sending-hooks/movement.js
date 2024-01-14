@@ -25,12 +25,15 @@ export default function handleMovementPacket(message) {
         wyff.logger.info(`moving using the mouse: x: ${x}, y: ${y}, z: ${z}`);
     }
 
-    wyff.logger.info(
+    const startOfUnknownHeader = cmdPacketLength
 
-        `%c${message.slice(4, startOfMovementOperationArguments)}` +
-        `%c${message.slice(startOfMovementOperationArguments + 1)}`,
+    wyff.logger.info(
+        `%c${message.slice(startOfUnknownHeader, startOfMovementOperationArguments - 4)},` +
+        `%c${message.slice(startOfMovementOperationArguments - 4, startOfMovementOperationArguments)},` +
+        `%c${message.slice(startOfMovementOperationArguments)}`,
 
         'background: orange; color: black;',
+        'background: red; color: black;',
         'background: yellow; color: black;',
 
     );
