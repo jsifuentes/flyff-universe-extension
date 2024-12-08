@@ -31,6 +31,5 @@ only tested on Chrome
 ## Making changes
 
 1. clone the repo
-2. `cd src/`
 2. `npm install`
 3. `npm run dev`
